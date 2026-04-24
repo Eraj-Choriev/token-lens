@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { RefreshCw, Bell, BellOff, BellRing } from 'lucide-react';
+import { RefreshCw, Bell, BellOff, BellRing, Menu } from 'lucide-react';
 import DownloadButton from './DownloadButton';
 
 export default function Header({
   lastUpdated, refreshing, onRefresh,
   notifPermission, notifEnabled, onToggleNotif, onRequestNotif,
-  activeView, data,
+  activeView, data, onMenuOpen,
 }) {
   const [justToggled, setJustToggled] = useState(false);
 
@@ -35,11 +35,22 @@ export default function Header({
 
   return (
     <header className="flex items-center justify-between mb-6 lg:mb-8 animate-fade-in">
-      <div>
-        <h1 className="font-display text-2xl lg:text-3xl font-bold text-[#1A1E2E] tracking-tight leading-tight">
-          {viewLabels[activeView] ?? 'Dashboard'}
-        </h1>
-        <p className="text-sm text-muted mt-0.5">AI token usage &amp; spend analytics</p>
+      <div className="flex items-center gap-3">
+        {/* Mobile burger — only visible on small screens */}
+        <button
+          className="lg:hidden w-9 h-9 rounded-2xl bg-surface border border-border flex items-center justify-center hover:border-[#7C5CFC] hover:bg-[#F5F3FF] transition-all duration-200 flex-shrink-0"
+          onClick={onMenuOpen}
+          aria-label="Open menu"
+        >
+          <Menu size={16} className="text-muted" />
+        </button>
+
+        <div>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold text-[#1A1E2E] tracking-tight leading-tight">
+            {viewLabels[activeView] ?? 'Dashboard'}
+          </h1>
+          <p className="text-sm text-muted mt-0.5">AI token usage &amp; spend analytics</p>
+        </div>
       </div>
 
       <div className="flex items-center gap-2.5">
@@ -86,17 +97,6 @@ export default function Header({
               transform: justToggled ? 'rotate(-20deg) scale(1.15)' : 'rotate(0deg) scale(1)',
             }}
           />
-          {/* Active dot */}
-          {bellActive && (
-            <span
-              className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#00C48C] ring-2 ring-white"
-              style={{ animation: 'livePulse 2s ease-in-out infinite' }}
-            />
-          )}
-          {/* Permission-needed dot */}
-          {!bellGranted && notifPermission !== 'denied' && (
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#F5A623]" />
-          )}
           {/* Tooltip on hover */}
           <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium bg-[#1A1E2E] text-white px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50">
             {bellActive ? 'Mute alerts' : bellGranted ? 'Unmute alerts' : 'Enable alerts'}

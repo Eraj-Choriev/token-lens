@@ -1,5 +1,8 @@
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTableImport from 'jspdf-autotable';
+const autoTable = typeof autoTableImport === 'function'
+  ? autoTableImport
+  : (autoTableImport.default || autoTableImport.autoTable);
 
 // ── Palette ──────────────────────────────────────────────────────────────────
 const C = {
@@ -81,7 +84,6 @@ export function generatePDF(data) {
   fill(doc, 0, 0, W, 297, C.dark);
 
   // Decorative circles
-  doc.setFillColor(124, 92, 252, 0.08);
   doc.setFillColor(40, 30, 80);   doc.circle(170, 60,  55, 'F');
   doc.setFillColor(10, 50, 60);   doc.circle(30,  230, 45, 'F');
   doc.setFillColor(20, 40, 70);   doc.circle(190, 220, 30, 'F');
@@ -435,7 +437,7 @@ export function generatePDF(data) {
   });
 
   // ── FOOTER on every page ──────────────────────────────────────────────────
-  const pages = doc.getNumberOfPages();
+  const pages = doc.internal.getNumberOfPages();
   for (let p = 1; p <= pages; p++) {
     doc.setPage(p);
     fill(doc, 0, 289, W, 8, C.dark);

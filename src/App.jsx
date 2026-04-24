@@ -23,6 +23,7 @@ function fmt(n) {
 
 export default function App() {
   const [activeNav, setActiveNav]       = useState('dashboard');
+  const [mobileOpen, setMobileOpen]     = useState(false);
   const [notifEnabled, setNotifEnabled] = useState(true);
   const [notifPermission, setNotifPermission] = useState('granted'); // in-app, no browser permission needed
 
@@ -37,12 +38,14 @@ export default function App() {
   }, [addToast]);
 
   const handleToggleNotif = useCallback(() => {
-    setNotifEnabled(v => {
-      const next = !v;
-      addToast({ title: next ? 'Notifications on' : 'Notifications muted', body: next ? 'You will receive in-app alerts and voice notifications.' : 'All alerts are silenced. Toggle the bell to re-enable.', urgency: next ? 'info' : 'warning' });
-      return next;
+    const next = !notifEnabled;
+    setNotifEnabled(next);
+    addToast({
+      title:   next ? 'Notifications on' : 'Notifications muted',
+      body:    next ? 'You will receive in-app alerts and voice notifications.' : 'All alerts are silenced. Toggle the bell to re-enable.',
+      urgency: next ? 'info' : 'warning',
     });
-  }, [addToast]);
+  }, [notifEnabled, addToast]);
 
   useNotifications(data?.planUsage, notifEnabled, addToast);
 
@@ -54,6 +57,8 @@ export default function App() {
         active={activeNav}
         onChange={setActiveNav}
         planUsage={data?.planUsage}
+        mobileOpen={mobileOpen}
+        onMobileClose={() => setMobileOpen(false)}
       />
 
       {/* Global in-app toast portal */}
@@ -71,6 +76,7 @@ export default function App() {
             onRequestNotif={handleRequestNotif}
             activeView={activeNav}
             data={data}
+            onMenuOpen={() => setMobileOpen(true)}
           />
 
           {/* Analytics view */}

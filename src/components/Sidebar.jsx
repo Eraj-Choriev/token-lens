@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   LayoutDashboard, BarChart3, ChevronRight,
-  Zap, Menu, X, Activity,
+  Zap, X, Activity,
 } from 'lucide-react';
 
 const NAV = [
@@ -64,11 +64,8 @@ function PlanMiniWidget({ planUsage }) {
   );
 }
 
-export default function Sidebar({ active, onChange, planUsage }) {
-  const [mobileOpen, setMobileOpen] = useState(false);
-
-  const Content = () => (
-    // NO h-full, NO flex-1 — content is exactly as tall as it needs to be
+export default function Sidebar({ active, onChange, planUsage, mobileOpen, onMobileClose }) {
+  const SidebarContent = () => (
     <div className="py-4 px-3">
 
       {/* Logo */}
@@ -80,6 +77,15 @@ export default function Sidebar({ active, onChange, planUsage }) {
           <Zap size={14} strokeWidth={2.5} className="text-white" />
         </div>
         <span className="font-display text-white font-bold text-base tracking-tight">TokenLens</span>
+
+        {/* Close button — mobile only, inside drawer */}
+        <button
+          className="ml-auto lg:hidden w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors"
+          onClick={onMobileClose}
+          aria-label="Close sidebar"
+        >
+          <X size={14} strokeWidth={2} className="text-[#6B7A99]" />
+        </button>
       </div>
 
       {/* Nav */}
@@ -90,7 +96,7 @@ export default function Sidebar({ active, onChange, planUsage }) {
           return (
             <button
               key={id}
-              onClick={() => { onChange(id); setMobileOpen(false); }}
+              onClick={() => { onChange(id); onMobileClose?.(); }}
               className="flex items-center gap-2.5 px-2 py-2 rounded-xl w-full text-left transition-all duration-200"
               style={{
                 background: isActive ? 'rgba(124,92,252,0.12)' : 'transparent',
@@ -98,7 +104,6 @@ export default function Sidebar({ active, onChange, planUsage }) {
               onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
               onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
             >
-              {/* Icon with gradient bg when active */}
               <span
                 className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-200"
                 style={{
@@ -134,10 +139,8 @@ export default function Sidebar({ active, onChange, planUsage }) {
         })}
       </nav>
 
-      {/* Plan widget — compact, directly below nav */}
       <PlanMiniWidget planUsage={planUsage} />
 
-      {/* Live pulse — single compact line, no card */}
       <div className="flex items-center gap-2 px-2 mt-4">
         <div className="dot-live flex-shrink-0" />
         <span className="text-[10px] text-[#2D3A50]">Live · 60s refresh</span>
@@ -147,28 +150,21 @@ export default function Sidebar({ active, onChange, planUsage }) {
 
   return (
     <>
-      {/* Mobile toggle */}
-      <button
-        className="fixed top-4 left-4 z-50 lg:hidden bg-sidebar text-white p-2 rounded-xl shadow-lg"
-        onClick={() => setMobileOpen(v => !v)}
-      >
-        {mobileOpen ? <X size={18} strokeWidth={2} /> : <Menu size={18} strokeWidth={2} />}
-      </button>
-
+      {/* Mobile backdrop */}
       {mobileOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setMobileOpen(false)} />
+        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={onMobileClose} />
       )}
 
       {/* Mobile drawer */}
       <div
         className={`fixed top-0 left-0 h-full w-[210px] bg-sidebar z-50 lg:hidden transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
-        <Content />
+        <SidebarContent />
       </div>
 
-      {/* Desktop sidebar — min-h-screen keeps the bg column, but content is top-aligned */}
+      {/* Desktop sidebar */}
       <aside className="hidden lg:block w-[210px] min-h-screen bg-sidebar flex-shrink-0">
-        <Content />
+        <SidebarContent />
       </aside>
     </>
   );

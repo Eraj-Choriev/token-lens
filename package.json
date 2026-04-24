@@ -15,8 +15,8 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.0",
     "framer-motion": "^12.38.0",
-    "jspdf": "^4.2.1",
-    "jspdf-autotable": "^5.0.7",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2",
     "lucide-react": "^1.9.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
