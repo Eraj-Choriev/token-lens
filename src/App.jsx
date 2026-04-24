@@ -1,17 +1,18 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Zap, DollarSign, Hash, TrendingUp, BarChart2, MessageSquare, BellRing } from 'lucide-react';
-import Sidebar          from './components/Sidebar';
-import Header           from './components/Header';
-import StatCard         from './components/StatCard';
-import SessionCard      from './components/SessionCard';
-import TaskBreakdown    from './components/TaskBreakdown';
-import RecentRequests   from './components/RecentRequests';
-import PlanLimits       from './components/PlanLimits';
-import AnalyticsView    from './views/AnalyticsView';
+import Sidebar               from './components/Sidebar';
+import Header                from './components/Header';
+import StatCard              from './components/StatCard';
+import SessionCard           from './components/SessionCard';
+import TaskBreakdown         from './components/TaskBreakdown';
+import RecentRequests        from './components/RecentRequests';
+import PlanLimits            from './components/PlanLimits';
+import AnalyticsView         from './views/AnalyticsView';
+import ToastNotifications, { useToasts } from './components/ToastNotifications';
 import { WeeklyUsageChart, HourlyChart, CostBarChart } from './components/Charts';
-import { useTokenData } from './hooks/useTokenData';
-import { useNotifications } from './hooks/useNotifications';
-import { MODEL_META }   from './data/mockData';
+import { useTokenData }      from './hooks/useTokenData';
+import { useNotifications }  from './hooks/useNotifications';
+import { MODEL_META }        from './data/mockData';
 
 function fmt(n) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -19,45 +20,31 @@ function fmt(n) {
   return String(Math.round(n));
 }
 
-function NotifBanner({ permission, onRequest }) {
-  const [dismissed, setDismissed] = useState(false);
-  if (permission === 'granted' || permission === 'denied' || dismissed) return null;
-  return (
-    <div className="mb-5 flex items-center gap-3 bg-[#E5DCFF] border border-[#7C5CFC]/20 rounded-2xl px-4 py-3 animate-fade-up">
-      <BellRing size={16} className="text-[#7C5CFC] flex-shrink-0" />
-      <p className="text-sm text-[#4A2FC4] flex-1">
-        Get alerts at <strong>50%</strong>, <strong>75%</strong>, <strong>90%</strong> &amp; <strong>100%</strong> of plan limits — click the bell icon to enable.
-      </p>
-      <button onClick={onRequest}
-              className="text-xs font-bold bg-[#7C5CFC] text-white px-3 py-1.5 rounded-xl hover:bg-[#6A4DE8] transition-colors flex-shrink-0">
-        Enable
-      </button>
-      <button onClick={() => setDismissed(true)} className="text-[#7C5CFC] text-xs font-medium flex-shrink-0">
-        Later
-      </button>
-    </div>
-  );
-}
 
 export default function App() {
-  const [activeNav, setActiveNav]     = useState('dashboard');
+  const [activeNav, setActiveNav]       = useState('dashboard');
   const [notifEnabled, setNotifEnabled] = useState(true);
-  const [notifPermission, setNotifPermission] = useState(
-    typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
-  );
+  const [notifPermission, setNotifPermission] = useState('granted'); // in-app, no browser permission needed
 
   const { data, loading, refreshing, lastUpdated, refresh } = useTokenData();
-  const { requestPermission } = useNotifications(data?.planUsage, notifEnabled);
+  const { toasts, addToast, removeToast } = useToasts();
 
-  const handleRequestNotif = async () => {
-    const result = await requestPermission();
-    setNotifPermission(result);
-    if (result === 'granted') setNotifEnabled(true);
-  };
+  // In-app: no browser permission needed — just use the addToast callback
+  const handleRequestNotif = useCallback(async () => {
+    setNotifPermission('granted');
+    setNotifEnabled(true);
+    addToast({ title: 'Notifications enabled', body: 'You\'ll be alerted at 50%, 75%, 90% and 100% of plan limits.', urgency: 'info' });
+  }, [addToast]);
 
-  const handleToggleNotif = () => {
-    setNotifEnabled(v => !v);
-  };
+  const handleToggleNotif = useCallback(() => {
+    setNotifEnabled(v => {
+      const next = !v;
+      addToast({ title: next ? 'Notifications on' : 'Notifications muted', body: next ? 'You will receive in-app alerts and voice notifications.' : 'All alerts are silenced. Toggle the bell to re-enable.', urgency: next ? 'info' : 'warning' });
+      return next;
+    });
+  }, [addToast]);
+
+  useNotifications(data?.planUsage, notifEnabled, addToast);
 
   const s = data?.stats;
 
@@ -68,6 +55,9 @@ export default function App() {
         onChange={setActiveNav}
         planUsage={data?.planUsage}
       />
+
+      {/* Global in-app toast portal */}
+      <ToastNotifications toasts={toasts} onDismiss={removeToast} />
 
       <main className="flex-1 overflow-y-auto p-4 lg:p-8 min-w-0">
         <div className="max-w-[1200px] mx-auto">
@@ -81,7 +71,6 @@ export default function App() {
             onRequestNotif={handleRequestNotif}
             activeView={activeNav}
           />
-          <NotifBanner permission={notifPermission} onRequest={handleRequestNotif} />
 
           {/* Analytics view */}
           {activeNav === 'analytics' && (
