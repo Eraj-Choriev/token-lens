@@ -1,13 +1,16 @@
-import { useState } from 'react';
-import { Zap, DollarSign, Hash, TrendingUp, BarChart2, MessageSquare } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Zap, DollarSign, Hash, TrendingUp, BarChart2, MessageSquare, Bell } from 'lucide-react';
 import Sidebar          from './components/Sidebar';
 import Header           from './components/Header';
 import StatCard         from './components/StatCard';
 import SessionCard      from './components/SessionCard';
 import TaskBreakdown    from './components/TaskBreakdown';
 import RecentRequests   from './components/RecentRequests';
+import PlanLimits       from './components/PlanLimits';
+import AnalyticsView    from './views/AnalyticsView';
 import { WeeklyUsageChart, HourlyChart, CostBarChart } from './components/Charts';
 import { useTokenData } from './hooks/useTokenData';
+import { useNotifications } from './hooks/useNotifications';
 import { MODEL_META }   from './data/mockData';
 
 function fmt(n) {
@@ -16,19 +19,61 @@ function fmt(n) {
   return String(Math.round(n));
 }
 
+function NotifBanner({ permission, onRequest }) {
+  const [dismissed, setDismissed] = useState(false);
+  if (permission === 'granted' || permission === 'denied' || dismissed) return null;
+  return (
+    <div className="mb-5 flex items-center gap-3 bg-[#E5DCFF] border border-[#7C5CFC]/20 rounded-2xl px-4 py-3 animate-fade-up">
+      <Bell size={16} className="text-[#7C5CFC] flex-shrink-0" />
+      <p className="text-sm text-[#4A2FC4] flex-1">Enable push notifications to be alerted when you're running low on tokens.</p>
+      <button onClick={onRequest}
+              className="text-xs font-bold bg-[#7C5CFC] text-white px-3 py-1.5 rounded-xl hover:bg-[#6A4DE8] transition-colors flex-shrink-0">
+        Enable
+      </button>
+      <button onClick={() => setDismissed(true)} className="text-[#7C5CFC] text-xs font-medium flex-shrink-0">
+        Dismiss
+      </button>
+    </div>
+  );
+}
+
 export default function App() {
   const [activeNav, setActiveNav] = useState('dashboard');
   const { data, loading, refreshing, lastUpdated, refresh } = useTokenData();
+  const { requestPermission, permission } = useNotifications(data?.planUsage);
+  const [notifPermission, setNotifPermission] = useState(
+    typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
+  );
+
+  const handleRequestNotif = async () => {
+    const result = await requestPermission();
+    setNotifPermission(result);
+  };
 
   const s = data?.stats;
 
   return (
     <div className="flex min-h-screen w-full">
-      <Sidebar active={activeNav} onChange={setActiveNav} />
+      <Sidebar
+        active={activeNav}
+        onChange={setActiveNav}
+        planUsage={data?.planUsage}
+        notifPermission={notifPermission}
+        onRequestNotif={handleRequestNotif}
+      />
 
       <main className="flex-1 overflow-y-auto p-4 lg:p-8 min-w-0">
         <div className="max-w-[1200px] mx-auto">
           <Header lastUpdated={lastUpdated} refreshing={refreshing} onRefresh={refresh} />
+          <NotifBanner permission={notifPermission} onRequest={handleRequestNotif} />
+
+          {/* Analytics view */}
+          {activeNav === 'analytics' && (
+            <AnalyticsView data={data} loading={loading} />
+          )}
+
+          {/* Dashboard view */}
+          {activeNav === 'dashboard' && <>
 
           {/* Row 1: Stat cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-4 lg:mb-5">
@@ -87,7 +132,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Row 5: Daily cost + Model insights */}
+          {/* Row 5: Daily cost + Plan limits */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 mb-4 lg:mb-5">
             <div className="lg:col-span-7 card-solid rounded-3xl p-5 animate-fade-up" style={{ animationDelay: '0.40s', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex items-center justify-between mb-4">
@@ -98,35 +143,8 @@ export default function App() {
                 <CostBarChart data={data?.weekly} loading={loading} />
               </div>
             </div>
-            <div className="lg:col-span-5 card-solid rounded-3xl p-5 animate-fade-up" style={{ animationDelay: '0.45s', opacity: 0, animationFillMode: 'forwards' }}>
-              <p className="text-sm font-semibold text-[#1A1E2E] mb-4">Model Insights</p>
-              {loading ? (
-                <div className="flex flex-col gap-3">{[1,2,3].map(i=><div key={i} className="shimmer-bg h-14 rounded-2xl"/>)}</div>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {Object.entries(MODEL_META).map(([key, meta], i) => {
-                    const isTop = key === s?.topModel;
-                    const share = [55, 30, 15][i];
-                    return (
-                      <div key={key} className={`flex items-center gap-3 p-3 rounded-2xl transition-colors duration-200 ${isTop ? 'ring-1' : 'hover:bg-[#F8F9FC]'}`} style={isTop ? { background: meta.bg } : {}}>
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: meta.bg }}>
-                          <div className="w-3 h-3 rounded-full" style={{ background: meta.color }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold text-[#1A1E2E] truncate">{meta.label}</p>
-                            {isTop && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: meta.color, color: '#fff' }}>TOP</span>}
-                          </div>
-                          <div className="h-1.5 bg-white/50 rounded-full mt-1.5 overflow-hidden">
-                            <div className="h-full rounded-full progress-bar-inner" style={{ width: `${share}%`, background: meta.color }} />
-                          </div>
-                        </div>
-                        <span className="text-sm font-mono font-bold text-[#1A1E2E]">{share}%</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+            <div className="lg:col-span-5">
+              <PlanLimits planUsage={data?.planUsage} loading={loading} />
             </div>
           </div>
 
@@ -179,6 +197,7 @@ export default function App() {
           <p className="text-center text-xs text-muted mt-6 pb-4">
             TokenLens · Powered by Claude API · Auto-refreshes every 60s
           </p>
+          </> }{/* end dashboard */}
         </div>
       </main>
     </div>
