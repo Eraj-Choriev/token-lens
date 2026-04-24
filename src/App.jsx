@@ -70,6 +70,7 @@ export default function App() {
             onToggleNotif={handleToggleNotif}
             onRequestNotif={handleRequestNotif}
             activeView={activeNav}
+            data={data}
           />
 
           {/* Analytics view */}

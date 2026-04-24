@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { RefreshCw, Bell, BellOff, BellRing } from 'lucide-react';
+import DownloadButton from './DownloadButton';
 
 export default function Header({
   lastUpdated, refreshing, onRefresh,
   notifPermission, notifEnabled, onToggleNotif, onRequestNotif,
-  activeView,
+  activeView, data,
 }) {
   const [justToggled, setJustToggled] = useState(false);
 
@@ -41,7 +42,10 @@ export default function Header({
         <p className="text-sm text-muted mt-0.5">AI token usage &amp; spend analytics</p>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2.5">
+        {/* Download button */}
+        <DownloadButton data={data} disabled={!data} />
+
         {/* Last updated pill */}
         <div className="hidden sm:flex items-center gap-1.5 bg-surface rounded-2xl px-3 py-2 border border-border text-xs text-muted">
           <div className="dot-live" style={{ background: refreshing ? '#F5A623' : '#00C48C', opacity: refreshing ? 1 : 0.7 }} />
