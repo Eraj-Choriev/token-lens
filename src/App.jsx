@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Zap, DollarSign, Hash, TrendingUp, BarChart2, MessageSquare, Bell } from 'lucide-react';
+import { useState } from 'react';
+import { Zap, DollarSign, Hash, TrendingUp, BarChart2, MessageSquare, BellRing } from 'lucide-react';
 import Sidebar          from './components/Sidebar';
 import Header           from './components/Header';
 import StatCard         from './components/StatCard';
@@ -24,30 +24,39 @@ function NotifBanner({ permission, onRequest }) {
   if (permission === 'granted' || permission === 'denied' || dismissed) return null;
   return (
     <div className="mb-5 flex items-center gap-3 bg-[#E5DCFF] border border-[#7C5CFC]/20 rounded-2xl px-4 py-3 animate-fade-up">
-      <Bell size={16} className="text-[#7C5CFC] flex-shrink-0" />
-      <p className="text-sm text-[#4A2FC4] flex-1">Enable push notifications to be alerted when you're running low on tokens.</p>
+      <BellRing size={16} className="text-[#7C5CFC] flex-shrink-0" />
+      <p className="text-sm text-[#4A2FC4] flex-1">
+        Get alerts at <strong>50%</strong>, <strong>75%</strong>, <strong>90%</strong> &amp; <strong>100%</strong> of plan limits — click the bell icon to enable.
+      </p>
       <button onClick={onRequest}
               className="text-xs font-bold bg-[#7C5CFC] text-white px-3 py-1.5 rounded-xl hover:bg-[#6A4DE8] transition-colors flex-shrink-0">
         Enable
       </button>
       <button onClick={() => setDismissed(true)} className="text-[#7C5CFC] text-xs font-medium flex-shrink-0">
-        Dismiss
+        Later
       </button>
     </div>
   );
 }
 
 export default function App() {
-  const [activeNav, setActiveNav] = useState('dashboard');
-  const { data, loading, refreshing, lastUpdated, refresh } = useTokenData();
-  const { requestPermission, permission } = useNotifications(data?.planUsage);
+  const [activeNav, setActiveNav]     = useState('dashboard');
+  const [notifEnabled, setNotifEnabled] = useState(true);
   const [notifPermission, setNotifPermission] = useState(
     typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
   );
 
+  const { data, loading, refreshing, lastUpdated, refresh } = useTokenData();
+  const { requestPermission } = useNotifications(data?.planUsage, notifEnabled);
+
   const handleRequestNotif = async () => {
     const result = await requestPermission();
     setNotifPermission(result);
+    if (result === 'granted') setNotifEnabled(true);
+  };
+
+  const handleToggleNotif = () => {
+    setNotifEnabled(v => !v);
   };
 
   const s = data?.stats;
@@ -58,13 +67,20 @@ export default function App() {
         active={activeNav}
         onChange={setActiveNav}
         planUsage={data?.planUsage}
-        notifPermission={notifPermission}
-        onRequestNotif={handleRequestNotif}
       />
 
       <main className="flex-1 overflow-y-auto p-4 lg:p-8 min-w-0">
         <div className="max-w-[1200px] mx-auto">
-          <Header lastUpdated={lastUpdated} refreshing={refreshing} onRefresh={refresh} />
+          <Header
+            lastUpdated={lastUpdated}
+            refreshing={refreshing}
+            onRefresh={refresh}
+            notifPermission={notifPermission}
+            notifEnabled={notifEnabled}
+            onToggleNotif={handleToggleNotif}
+            onRequestNotif={handleRequestNotif}
+            activeView={activeNav}
+          />
           <NotifBanner permission={notifPermission} onRequest={handleRequestNotif} />
 
           {/* Analytics view */}

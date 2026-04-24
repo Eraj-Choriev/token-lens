@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LayoutDashboard, BarChart3, Settings, ChevronRight, Zap, Bell, BellOff, Menu, X } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Settings, ChevronRight, Zap, Menu, X } from 'lucide-react';
 
 const NAV = [
   { id: 'dashboard',  icon: LayoutDashboard, label: 'Dashboard'  },
@@ -45,7 +45,7 @@ function PlanMiniWidget({ planUsage }) {
   );
 }
 
-export default function Sidebar({ active, onChange, planUsage, notifPermission, onRequestNotif }) {
+export default function Sidebar({ active, onChange, planUsage }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const Content = () => (
@@ -79,32 +79,6 @@ export default function Sidebar({ active, onChange, planUsage, notifPermission, 
       {/* Plan usage widget */}
       <p className="text-[10px] font-semibold uppercase tracking-widest text-[#3D4A60] px-3 mb-2">Plan</p>
       <PlanMiniWidget planUsage={planUsage} />
-
-      {/* Notification toggle */}
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-[#3D4A60] px-3 mb-2 mt-2">Alerts</p>
-      <button
-        onClick={onRequestNotif}
-        className={`sidebar-item mx-0 w-full mb-1 ${notifPermission === 'granted' ? 'active' : ''}`}
-      >
-        <span className={`icon-wrap ${notifPermission === 'granted' ? 'bg-[#00C48C]/20' : ''}`}>
-          {notifPermission === 'granted'
-            ? <Bell size={15} className="text-[#00C48C]" />
-            : <BellOff size={15} className="text-[#6B7A99]" />}
-        </span>
-        <span className="text-[13px]">
-          {notifPermission === 'granted' ? 'Alerts on' : 'Enable alerts'}
-        </span>
-        {notifPermission === 'granted' && (
-          <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#00C48C]" />
-        )}
-      </button>
-      {notifPermission === 'granted' && (
-        <div className="mx-1 rounded-xl bg-[#00C48C]/5 border border-[#00C48C]/10 px-3 py-2 mb-3">
-          <p className="text-[11px] text-[#00C48C]/80 leading-snug">
-            You'll be notified at 75%, 90% and 100% of plan limits.
-          </p>
-        </div>
-      )}
 
       {/* Spacer */}
       <div className="flex-1" />
