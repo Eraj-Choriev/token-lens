@@ -89,6 +89,8 @@ export default function DownloadButton({ data, disabled }) {
       onClick={handleClick}
       disabled={disabled || phase !== 'idle'}
       title="Download full analytics report as PDF"
+      aria-label="Export PDF"
+      className="dl-btn"
       style={{
         position: 'relative',
         display: 'inline-flex',
@@ -112,7 +114,6 @@ export default function DownloadButton({ data, disabled }) {
         opacity: disabled ? 0.5 : 1,
         userSelect: 'none',
         WebkitUserSelect: 'none',
-        minWidth: 140,
         justifyContent: 'center',
       }}
       onMouseEnter={e => { if (isIdle) e.currentTarget.style.transform = 'translateY(-1px)'; }}
@@ -161,7 +162,7 @@ export default function DownloadButton({ data, disabled }) {
       />
 
       {/* Label */}
-      <span style={{ position: 'relative', zIndex: 1, whiteSpace: 'nowrap' }}>
+      <span className="dl-btn-label" style={{ position: 'relative', zIndex: 1, whiteSpace: 'nowrap' }}>
         {cfg.label}
       </span>
 
@@ -178,6 +179,10 @@ export default function DownloadButton({ data, disabled }) {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to   { transform: rotate(360deg); }
+        }
+        @media (max-width: 639px) {
+          .dl-btn { padding: 0 11px !important; gap: 0 !important; }
+          .dl-btn-label { display: none; }
         }
       `}</style>
     </button>

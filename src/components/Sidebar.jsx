@@ -271,7 +271,7 @@ export default function Sidebar({ active, onChange, planUsage, mobileOpen, onMob
       {/* Mobile backdrop */}
       {mobileOpen && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 40 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 60 }}
           className="lg:hidden"
           onClick={onMobileClose}
         />
@@ -282,7 +282,7 @@ export default function Sidebar({ active, onChange, planUsage, mobileOpen, onMob
         className="lg:hidden"
         style={{
           position: 'fixed', top: 0, left: 0, height: '100%', width: 210,
-          background: '#0D0F14', zIndex: 50,
+          background: '#0D0F14', zIndex: 70,
           transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
           transition: 'transform 0.3s ease',
         }}

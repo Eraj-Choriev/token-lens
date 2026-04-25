@@ -106,7 +106,7 @@ export default function App() {
 
       <ToastNotifications toasts={toasts} onDismiss={removeToast} />
 
-      <main className="flex-1 overflow-y-auto min-w-0" style={{ padding: '20px 24px' }}>
+      <main className="flex-1 overflow-y-auto min-w-0 p-3 sm:p-5 lg:px-6 lg:py-5">
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <Header
             lastUpdated={lastUpdated}

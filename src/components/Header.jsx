@@ -44,6 +44,7 @@ function UserMenu({ user, onSignOut, onNavigate }) {
     <div ref={ref} style={{ position: 'relative' }}>
       <button
         onClick={() => setOpen(o => !o)}
+        className="user-menu-btn"
         style={{
           display: 'flex', alignItems: 'center', gap: 8,
           padding: '4px 10px 4px 5px',
@@ -55,10 +56,10 @@ function UserMenu({ user, onSignOut, onNavigate }) {
         onMouseLeave={e => { if (!open) { e.currentTarget.style.borderColor = '#E4E8F0'; e.currentTarget.style.background = '#fff'; }}}
       >
         <UserAvatar src={avatar} initials={initials} size={28} />
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#1A1E2E', maxWidth: 90, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+        <span className="hidden sm:inline" style={{ fontSize: 13, fontWeight: 600, color: '#1A1E2E', maxWidth: 90, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
           {displayName}
         </span>
-        <ChevronDown size={13} strokeWidth={2} style={{ color: '#8B95A8', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
+        <ChevronDown size={13} strokeWidth={2} className="hidden sm:block" style={{ color: '#8B95A8', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
       </button>
 
       {open && (
@@ -140,28 +141,28 @@ export default function Header({
   const BellIcon    = bellActive ? BellRing : bellGranted ? BellOff : Bell;
 
   return (
-    <header className="flex items-center justify-between mb-6 lg:mb-7 animate-fade-in" style={{
+    <header className="flex items-center justify-between gap-2 mb-5 sm:mb-6 lg:mb-7 animate-fade-in px-3 py-2.5 sm:px-4 sm:py-3" style={{
       background: '#fff', border: '1px solid #E4E8F0',
-      borderRadius: 18, padding: '12px 18px',
+      borderRadius: 18,
       boxShadow: '0 1px 8px rgba(0,0,0,0.04)',
-      position: 'relative', zIndex: 200,
+      position: 'relative', zIndex: 30,
     }}>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
         <button className="lg:hidden w-9 h-9 rounded-2xl bg-surface border border-border flex items-center justify-center transition-all duration-200 flex-shrink-0"
           onClick={onMenuOpen} aria-label="Open menu">
           <Menu size={16} className="text-muted" />
         </button>
-        <div>
-          <h1 style={{ fontWeight: 700, fontSize: 20, color: '#1A1E2E', letterSpacing: '-0.4px', lineHeight: 1.1, margin: 0 }}>
+        <div className="min-w-0">
+          <h1 className="text-[17px] sm:text-[20px] truncate" style={{ fontWeight: 700, color: '#1A1E2E', letterSpacing: '-0.4px', lineHeight: 1.1, margin: 0 }}>
             {VIEW_LABELS[activeView] ?? 'Overview'}
           </h1>
-          <p style={{ fontSize: 12.5, color: '#8B95A8', margin: 0, marginTop: 2 }}>
+          <p className="hidden sm:block" style={{ fontSize: 12.5, color: '#8B95A8', margin: 0, marginTop: 2 }}>
             AI token usage &amp; spend analytics
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
         <DownloadButton data={data} disabled={!data} />
 
         <div className="hidden sm:flex items-center gap-1.5 rounded-2xl px-3 py-1.5 border text-xs text-muted"
