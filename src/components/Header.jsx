@@ -1,11 +1,124 @@
-import { useState } from 'react';
-import { RefreshCw, Bell, BellOff, BellRing, Menu } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { RefreshCw, Bell, BellOff, BellRing, Menu, ChevronDown, LogOut, Settings, User } from 'lucide-react';
 import DownloadButton from './DownloadButton';
+
+const VIEW_LABELS = {
+  dashboard: 'Overview',
+  analytics: 'Analytics',
+  profile:   'My Profile',
+  settings:  'Settings',
+};
+
+function UserAvatar({ src, initials, size = 28 }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', flexShrink: 0,
+      background: src ? 'transparent' : 'linear-gradient(135deg,#7C5CFC,#A78BFA)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+    }}>
+      {src
+        ? <img src={src} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : <span style={{ color: '#fff', fontSize: size * 0.38, fontWeight: 700 }}>{initials}</span>
+      }
+    </div>
+  );
+}
+
+function UserMenu({ user, onSignOut, onNavigate }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const avatar = (() => { try { return localStorage.getItem('tl_avatar') || ''; } catch { return ''; } })();
+  const initials = (user?.name || user?.email || 'U').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  const displayName = user?.name || user?.email?.split('@')[0] || 'User';
+
+  const go = view => { setOpen(false); onNavigate(view); };
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '4px 10px 4px 5px',
+          background: open ? '#F0EDFF' : '#fff',
+          border: `1px solid ${open ? '#C4B5FD' : '#E4E8F0'}`,
+          borderRadius: 28, cursor: 'pointer', transition: 'all 0.15s',
+        }}
+        onMouseEnter={e => { if (!open) { e.currentTarget.style.borderColor = '#C4B5FD'; e.currentTarget.style.background = '#FAF9FF'; }}}
+        onMouseLeave={e => { if (!open) { e.currentTarget.style.borderColor = '#E4E8F0'; e.currentTarget.style.background = '#fff'; }}}
+      >
+        <UserAvatar src={avatar} initials={initials} size={28} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#1A1E2E', maxWidth: 90, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+          {displayName}
+        </span>
+        <ChevronDown size={13} strokeWidth={2} style={{ color: '#8B95A8', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', right: 0, top: 'calc(100% + 8px)',
+          background: '#fff', border: '1px solid #E4E8F0',
+          borderRadius: 14, boxShadow: '0 8px 40px rgba(0,0,0,0.16)',
+          minWidth: 210, zIndex: 9999, overflow: 'hidden',
+          animation: 'fadeDown 0.15s ease',
+        }}>
+          <div style={{ padding: '12px 14px', borderBottom: '1px solid #F0F2F7' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <UserAvatar src={avatar} initials={initials} size={36} />
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#1A1E2E', margin: 0 }}>{displayName}</p>
+                <p style={{ fontSize: 11.5, color: '#8B95A8', margin: 0 }}>{user?.email || ''}</p>
+              </div>
+            </div>
+          </div>
+
+          {[
+            { icon: User, label: 'My Profile', view: 'profile' },
+            { icon: Settings, label: 'Settings', view: 'settings' },
+          ].map(({ icon: Icon, label, view }) => (
+            <button key={view} onClick={() => go(view)} style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+              padding: '9px 14px', background: 'none', border: 'none',
+              cursor: 'pointer', fontSize: 13, color: '#3D4457', fontWeight: 500,
+              transition: 'background 0.1s', textAlign: 'left',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#F5F6FA'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+            >
+              <Icon size={14} style={{ color: '#8B95A8' }} /> {label}
+            </button>
+          ))}
+
+          <div style={{ height: 1, background: '#F0F2F7', margin: '4px 0' }} />
+
+          <button onClick={() => { setOpen(false); onSignOut(); }} style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+            padding: '9px 14px', background: 'none', border: 'none',
+            cursor: 'pointer', fontSize: 13, color: '#EF4444', fontWeight: 500,
+          }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#FFF5F5'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+          >
+            <LogOut size={14} style={{ color: '#EF4444' }} /> Sign Out
+          </button>
+        </div>
+      )}
+      <style>{`@keyframes fadeDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}`}</style>
+    </div>
+  );
+}
 
 export default function Header({
   lastUpdated, refreshing, onRefresh,
   notifPermission, notifEnabled, onToggleNotif, onRequestNotif,
-  activeView, data, onMenuOpen,
+  activeView, data, onMenuOpen, user, onSignOut, onNavigate,
 }) {
   const [justToggled, setJustToggled] = useState(false);
 
@@ -13,96 +126,81 @@ export default function Header({
     ? lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     : '—';
 
-  const viewLabels = { dashboard: 'Dashboard', analytics: 'Analytics' };
-
   const handleBellClick = async () => {
     if (notifPermission === 'default' || notifPermission === 'unsupported') {
-      await onRequestNotif();
-      return;
+      await onRequestNotif(); return;
     }
     setJustToggled(true);
     onToggleNotif();
     setTimeout(() => setJustToggled(false), 600);
   };
 
-  // Bell appearance state
   const bellGranted = notifPermission === 'granted';
   const bellActive  = bellGranted && notifEnabled;
-  const bellColor   = bellActive ? '#7C5CFC' : '#8B95A8';
-  const bellBg      = bellActive ? '#E5DCFF' : 'white';
-  const bellBorder  = bellActive ? '#C4B5FD' : '#E4E8F0';
   const BellIcon    = bellActive ? BellRing : bellGranted ? BellOff : Bell;
 
   return (
-    <header className="flex items-center justify-between mb-6 lg:mb-8 animate-fade-in">
+    <header className="flex items-center justify-between mb-6 lg:mb-7 animate-fade-in" style={{
+      background: '#fff', border: '1px solid #E4E8F0',
+      borderRadius: 18, padding: '12px 18px',
+      boxShadow: '0 1px 8px rgba(0,0,0,0.04)',
+      position: 'relative', zIndex: 200,
+    }}>
       <div className="flex items-center gap-3">
-        {/* Mobile burger — only visible on small screens */}
-        <button
-          className="lg:hidden w-9 h-9 rounded-2xl bg-surface border border-border flex items-center justify-center hover:border-[#7C5CFC] hover:bg-[#F5F3FF] transition-all duration-200 flex-shrink-0"
-          onClick={onMenuOpen}
-          aria-label="Open menu"
-        >
+        <button className="lg:hidden w-9 h-9 rounded-2xl bg-surface border border-border flex items-center justify-center transition-all duration-200 flex-shrink-0"
+          onClick={onMenuOpen} aria-label="Open menu">
           <Menu size={16} className="text-muted" />
         </button>
-
         <div>
-          <h1 className="font-display text-2xl lg:text-3xl font-bold text-[#1A1E2E] tracking-tight leading-tight">
-            {viewLabels[activeView] ?? 'Dashboard'}
+          <h1 style={{ fontWeight: 700, fontSize: 20, color: '#1A1E2E', letterSpacing: '-0.4px', lineHeight: 1.1, margin: 0 }}>
+            {VIEW_LABELS[activeView] ?? 'Overview'}
           </h1>
-          <p className="text-sm text-muted mt-0.5">AI token usage &amp; spend analytics</p>
+          <p style={{ fontSize: 12.5, color: '#8B95A8', margin: 0, marginTop: 2 }}>
+            AI token usage &amp; spend analytics
+          </p>
         </div>
       </div>
 
       <div className="flex items-center gap-2.5">
-        {/* Download button */}
         <DownloadButton data={data} disabled={!data} />
 
-        {/* Last updated pill */}
-        <div className="hidden sm:flex items-center gap-1.5 bg-surface rounded-2xl px-3 py-2 border border-border text-xs text-muted">
+        <div className="hidden sm:flex items-center gap-1.5 rounded-2xl px-3 py-1.5 border text-xs text-muted"
+          style={{ background: '#F5F6FA', borderColor: '#E4E8F0' }}>
           <div className="dot-live" style={{ background: refreshing ? '#F5A623' : '#00C48C', opacity: refreshing ? 1 : 0.7 }} />
-          <span className="font-mono">
-            {refreshing ? 'Refreshing…' : `Updated ${timeStr}`}
-          </span>
+          <span className="font-mono">{refreshing ? 'Refreshing…' : `Updated ${timeStr}`}</span>
         </div>
 
-        {/* Refresh */}
-        <button
-          onClick={onRefresh}
-          disabled={refreshing}
-          title="Refresh data"
-          className="w-9 h-9 rounded-2xl bg-surface border border-border flex items-center justify-center hover:border-[#7C5CFC] hover:bg-[#F5F3FF] transition-all duration-200 disabled:opacity-40 group"
+        <button onClick={onRefresh} disabled={refreshing} title="Refresh data" style={{
+          width: 36, height: 36, borderRadius: 10, background: '#fff',
+          border: '1px solid #E4E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: refreshing ? 'not-allowed' : 'pointer', transition: 'all 0.15s',
+          opacity: refreshing ? 0.4 : 1,
+        }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#7C5CFC'; e.currentTarget.style.background = '#F5F3FF'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = '#E4E8F0'; e.currentTarget.style.background = '#fff'; }}
         >
-          <RefreshCw
-            size={15}
-            className={`text-muted group-hover:text-[#7C5CFC] transition-colors duration-200 ${refreshing ? 'animate-spin' : ''}`}
-          />
+          <RefreshCw size={14} style={{ color: '#8B95A8', animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
         </button>
 
-        {/* Notification toggle bell */}
-        <button
-          onClick={handleBellClick}
-          title={bellActive ? 'Notifications on — click to mute' : bellGranted ? 'Notifications muted — click to enable' : 'Enable notifications'}
-          className="relative w-9 h-9 rounded-2xl flex items-center justify-center transition-all duration-300 group"
-          style={{
-            background: bellBg,
-            border: `1px solid ${bellBorder}`,
-            boxShadow: bellActive ? '0 0 0 0 rgba(124,92,252,0.3)' : 'none',
-          }}
-        >
-          <BellIcon
-            size={15}
-            className="transition-all duration-300"
-            style={{
-              color: bellColor,
-              transform: justToggled ? 'rotate(-20deg) scale(1.15)' : 'rotate(0deg) scale(1)',
-            }}
-          />
-          {/* Tooltip on hover */}
-          <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium bg-[#1A1E2E] text-white px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50">
-            {bellActive ? 'Mute alerts' : bellGranted ? 'Unmute alerts' : 'Enable alerts'}
-          </span>
+        <button onClick={handleBellClick} title={bellActive ? 'Mute alerts' : 'Enable alerts'} style={{
+          width: 36, height: 36, borderRadius: 10, position: 'relative',
+          background: bellActive ? '#E5DCFF' : 'white',
+          border: `1px solid ${bellActive ? '#C4B5FD' : '#E4E8F0'}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+        }}>
+          <BellIcon size={14} style={{
+            color: bellActive ? '#7C5CFC' : '#8B95A8',
+            transform: justToggled ? 'rotate(-20deg) scale(1.15)' : 'none', transition: 'transform 0.3s',
+          }} />
+          {bellActive && <span style={{
+            position: 'absolute', top: 6, right: 7, width: 6, height: 6,
+            borderRadius: '50%', background: '#7C5CFC', border: '1.5px solid #fff',
+          }} />}
         </button>
+
+        <UserMenu user={user} onSignOut={onSignOut} onNavigate={onNavigate} />
       </div>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </header>
   );
 }

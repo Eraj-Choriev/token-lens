@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Zap, DollarSign, Hash, TrendingUp, BarChart2, MessageSquare, BellRing } from 'lucide-react';
+import { Zap, DollarSign, Hash, TrendingUp, BarChart2, MessageSquare } from 'lucide-react';
 import Sidebar               from './components/Sidebar';
 import Header                from './components/Header';
 import StatCard              from './components/StatCard';
@@ -13,6 +13,10 @@ import { WeeklyUsageChart, HourlyChart, CostBarChart } from './components/Charts
 import { useTokenData }      from './hooks/useTokenData';
 import { useNotifications }  from './hooks/useNotifications';
 import { MODEL_META }        from './data/mockData';
+import SignIn                from './pages/SignIn';
+import SignUp                from './pages/SignUp';
+import Profile               from './pages/Profile';
+import Settings              from './pages/Settings';
 
 function fmt(n) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -20,17 +24,21 @@ function fmt(n) {
   return String(Math.round(n));
 }
 
+function getStoredUser() {
+  try { return JSON.parse(localStorage.getItem('tl_auth')); } catch { return null; }
+}
 
 export default function App() {
-  const [activeNav, setActiveNav]       = useState('dashboard');
-  const [mobileOpen, setMobileOpen]     = useState(false);
-  const [notifEnabled, setNotifEnabled] = useState(true);
-  const [notifPermission, setNotifPermission] = useState('granted'); // in-app, no browser permission needed
+  const [user, setUser]             = useState(getStoredUser);   // null = not signed in
+  const [authPage, setAuthPage]     = useState('signin');        // 'signin' | 'signup'
+  const [activeNav, setActiveNav]   = useState('dashboard');
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [notifEnabled, setNotifEnabled]   = useState(true);
+  const [notifPermission, setNotifPermission] = useState('granted');
 
   const { data, loading, refreshing, lastUpdated, refresh } = useTokenData();
   const { toasts, addToast, removeToast } = useToasts();
 
-  // In-app: no browser permission needed — just use the addToast callback
   const handleRequestNotif = useCallback(async () => {
     setNotifPermission('granted');
     setNotifEnabled(true);
@@ -42,17 +50,52 @@ export default function App() {
     setNotifEnabled(next);
     addToast({
       title:   next ? 'Notifications on' : 'Notifications muted',
-      body:    next ? 'You will receive in-app alerts and voice notifications.' : 'All alerts are silenced. Toggle the bell to re-enable.',
+      body:    next ? 'You will receive in-app alerts.' : 'All alerts are silenced.',
       urgency: next ? 'info' : 'warning',
     });
   }, [notifEnabled, addToast]);
 
+  const handleSignIn = useCallback(u => {
+    setUser(u);
+    addToast({ title: `Welcome back${u.name ? ', ' + u.name : ''}!`, body: 'You\'re now signed in to TokenLens.', urgency: 'info' });
+  }, [addToast]);
+
+  const handleSignUp = useCallback(u => {
+    setUser(u);
+    localStorage.setItem('tl_auth', JSON.stringify(u));
+    addToast({ title: `Account created!`, body: `Welcome to TokenLens, ${u.name || u.email}!`, urgency: 'info' });
+  }, [addToast]);
+
+  const handleSignOut = useCallback(() => {
+    localStorage.removeItem('tl_auth');
+    setUser(null);
+    setAuthPage('signin');
+  }, []);
+
+  const handleUpdateUser = useCallback(updated => {
+    setUser(updated);
+    addToast({ title: 'Profile updated', body: 'Your changes have been saved.', urgency: 'info' });
+  }, [addToast]);
+
   useNotifications(data?.planUsage, notifEnabled, addToast);
+
+  // ── Auth gate ──────────────────────────────────────────────
+  if (!user) {
+    return (
+      <>
+        <ToastNotifications toasts={toasts} onDismiss={removeToast} />
+        {authPage === 'signin'
+          ? <SignIn onSignIn={handleSignIn} onGoSignUp={() => setAuthPage('signup')} />
+          : <SignUp onSignUp={handleSignUp} onGoSignIn={() => setAuthPage('signin')} />
+        }
+      </>
+    );
+  }
 
   const s = data?.stats;
 
   return (
-    <div className="flex min-h-screen w-full">
+    <div className="flex min-h-screen w-full" style={{ background: '#F5F6FA', flex: 1 }}>
       <Sidebar
         active={activeNav}
         onChange={setActiveNav}
@@ -61,11 +104,10 @@ export default function App() {
         onMobileClose={() => setMobileOpen(false)}
       />
 
-      {/* Global in-app toast portal */}
       <ToastNotifications toasts={toasts} onDismiss={removeToast} />
 
-      <main className="flex-1 overflow-y-auto p-4 lg:p-8 min-w-0">
-        <div className="max-w-[1200px] mx-auto">
+      <main className="flex-1 overflow-y-auto min-w-0" style={{ padding: '20px 24px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <Header
             lastUpdated={lastUpdated}
             refreshing={refreshing}
@@ -77,14 +119,23 @@ export default function App() {
             activeView={activeNav}
             data={data}
             onMenuOpen={() => setMobileOpen(true)}
+            user={user}
+            onSignOut={handleSignOut}
+            onNavigate={setActiveNav}
           />
 
-          {/* Analytics view */}
+          {activeNav === 'profile' && (
+            <Profile user={user} onUpdateUser={handleUpdateUser} />
+          )}
+
+          {activeNav === 'settings' && (
+            <Settings notifEnabled={notifEnabled} onToggleNotif={handleToggleNotif} />
+          )}
+
           {activeNav === 'analytics' && (
             <AnalyticsView data={data} loading={loading} />
           )}
 
-          {/* Dashboard view */}
           {activeNav === 'dashboard' && <>
 
           {/* Row 1: Stat cards */}
@@ -209,7 +260,7 @@ export default function App() {
           <p className="text-center text-xs text-muted mt-6 pb-4">
             TokenLens · Powered by Claude API · Auto-refreshes every 60s
           </p>
-          </> }{/* end dashboard */}
+          </>}
         </div>
       </main>
     </div>

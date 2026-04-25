@@ -60,7 +60,7 @@ export function HourlyChart({ data, loading }) {
   const slice = data?.slice(6, 22) || [];
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={slice} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barSize={14}>
+      <BarChart data={slice} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%"   stopColor="#7C5CFC" stopOpacity={1}   />

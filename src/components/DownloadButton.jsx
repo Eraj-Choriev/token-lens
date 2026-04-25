@@ -61,9 +61,16 @@ export default function DownloadButton({ data, disabled }) {
       setBarPct(cur);
     }
 
-    // Phase 3: success
+    // Phase 3: success — log to export history
     setPhase('success');
     setBarPct(100);
+    try {
+      const existing = JSON.parse(localStorage.getItem('tl_exports') || '[]');
+      localStorage.setItem('tl_exports', JSON.stringify([
+        { id: Date.now(), date: new Date().toISOString(), label: 'Analytics Report', pages: 6 },
+        ...existing,
+      ].slice(0, 100)));
+    } catch { /* ignore storage errors */ }
 
     // Phase 4: reset after 2.5s
     setTimeout(() => {

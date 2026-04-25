@@ -95,14 +95,19 @@ export function generateTaskBreakdown() {
 export function generateRecentRequests() {
   const models = Object.keys(MODEL_META);
   const tasks  = TASK_CATEGORIES;
-  return Array.from({ length: 12 }, (_, i) => {
+  return Array.from({ length: 20 }, (_, i) => {
     const model   = models[rand(0, models.length - 1)];
     const task    = tasks[rand(0, tasks.length - 1)];
     const input   = rand(200, 8000);
     const output  = rand(100, 4000);
     const price   = PRICING[model];
     const cost    = ((input * price.input + output * price.output) / 1_000_000);
-    const minsAgo = i * rand(2, 12);
+    // Distribute across today, yesterday, and month
+    let minsAgo;
+    if (i < 6) minsAgo = i * rand(2, 15);                      // Today (0-90 mins)
+    else if (i < 12) minsAgo = 1440 + (i - 6) * rand(10, 30);  // Yesterday (1440-2880 mins)
+    else minsAgo = rand(2880, 43200);                            // This month (2-30 days)
+
     return { id: i, model, task, input, output, total: input + output, cost, minsAgo };
   });
 }
