@@ -41,11 +41,16 @@ export const signUpWithEmail = async (email, password, name) => {
 
 export const logOut = () => signOut(auth);
 
-export const resetPassword = (email) => sendPasswordResetEmail(auth, email);
+export const resetPassword = (email) =>
+  sendPasswordResetEmail(auth, email, {
+    url: 'https://eraj-choriev.github.io/token-lens/',
+    handleCodeInApp: false,
+  });
 
 export function firebaseErrorMessage(code) {
   switch (code) {
     case 'auth/user-not-found':
+      return 'No account found with this email';
     case 'auth/invalid-credential':
       return 'Invalid email or password';
     case 'auth/wrong-password':

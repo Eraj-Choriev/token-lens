@@ -120,6 +120,7 @@ export default function App() {
         {authPage === 'signin'   && <SignIn onSignIn={handleSignIn} onGoSignUp={() => setAuthPage('signup')} onGoForgot={() => setAuthPage('forgot')} lang={lang} />}
         {authPage === 'signup'   && <SignUp onSignUp={handleSignUp} onGoSignIn={() => setAuthPage('signin')} lang={lang} />}
         {authPage === 'forgot'   && <ForgotPassword onGoSignIn={() => setAuthPage('signin')} />}
+        <ToastNotifications toasts={toasts} onDismiss={removeToast} />
       </>
     );
   }

@@ -7,11 +7,13 @@ const FONT   = "'Inter', ui-sans-serif, system-ui";
 const PURPLE = '#7C5CFC';
 
 export default function ForgotPassword({ onGoSignIn }) {
-  const [email, setEmail]     = useState('');
-  const [loading, setLoading] = useState(false);
-  const [sent, setSent]       = useState(false);
-  const [error, setError]     = useState('');
-  const [focused, setFocused] = useState(false);
+  const [email, setEmail]       = useState('');
+  const [loading, setLoading]   = useState(false);
+  const [sent, setSent]         = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resent, setResent]     = useState(false);
+  const [error, setError]       = useState('');
+  const [focused, setFocused]   = useState(false);
 
   const handleSubmit = async ev => {
     ev.preventDefault();
@@ -26,6 +28,20 @@ export default function ForgotPassword({ onGoSignIn }) {
       setError(firebaseErrorMessage(err.code));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setResending(true);
+    setResent(false);
+    try {
+      await resetPassword(email);
+      setResent(true);
+      setTimeout(() => setResent(false), 4000);
+    } catch {
+      // silently ignore resend errors
+    } finally {
+      setResending(false);
     }
   };
 
@@ -65,21 +81,58 @@ export default function ForgotPassword({ onGoSignIn }) {
           {sent ? (
             /* ── Success state ── */
             <div>
+              {/* Green confirmation box */}
               <div style={{
-                display:'flex', flexDirection:'column', alignItems:'center', gap:12,
-                padding:'24px 20px', background:'#F0FDF4', borderRadius:14,
-                border:'1px solid #BBF7D0', marginBottom:20,
+                display:'flex', flexDirection:'column', alignItems:'center', gap:10,
+                padding:'22px 20px', background:'#F0FDF4', borderRadius:14,
+                border:'1px solid #BBF7D0', marginBottom:16,
               }}>
-                <CheckCircle2 size={36} color="#16A34A" strokeWidth={1.8} />
-                <p style={{ fontSize:13, color:'#166534', textAlign:'center', margin:0, lineHeight:1.6, fontFamily:FONT }}>
-                  Didn't receive it? Check your spam folder or{' '}
-                  <button
-                    onClick={() => { setSent(false); setEmail(''); }}
-                    style={{ color:PURPLE, fontWeight:700, background:'none', border:'none', cursor:'pointer', padding:0, fontSize:13, fontFamily:FONT }}
-                  >
-                    try a different email
-                  </button>.
+                <CheckCircle2 size={34} color="#16A34A" strokeWidth={1.8} />
+                <p style={{ fontSize:13.5, fontWeight:600, color:'#166534', margin:0, fontFamily:FONT }}>
+                  Reset link sent!
                 </p>
+              </div>
+
+              {/* Steps */}
+              <div style={{ marginBottom:18 }}>
+                {[
+                  { n:1, text:'Open your email inbox for ' + email },
+                  { n:2, text:'Click the "Reset password" link in the email' },
+                  { n:3, text:'Set your new password and sign back in' },
+                ].map(({ n, text }) => (
+                  <div key={n} style={{ display:'flex', alignItems:'flex-start', gap:10, marginBottom:10 }}>
+                    <div style={{ width:22, height:22, borderRadius:'50%', background:`linear-gradient(135deg,${PURPLE},#A78BFA)`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:1 }}>
+                      <span style={{ fontSize:11, fontWeight:700, color:'#fff', fontFamily:FONT }}>{n}</span>
+                    </div>
+                    <p style={{ fontSize:12.5, color:'#374151', margin:0, lineHeight:1.55, fontFamily:FONT }}>{text}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Spam warning */}
+              <div style={{ padding:'10px 14px', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:10, marginBottom:16 }}>
+                <p style={{ fontSize:12, color:'#92400E', margin:0, lineHeight:1.55, fontFamily:FONT }}>
+                  <strong>Didn't get it?</strong> Check your <strong>spam / junk</strong> folder — the email comes from <em>noreply@token-cac67.firebaseapp.com</em> and may be filtered. Allow up to 2 minutes.
+                </p>
+              </div>
+
+              {/* Resend + try different */}
+              <div style={{ display:'flex', gap:8, marginBottom:14 }}>
+                <button onClick={handleResend} disabled={resending} style={{
+                  flex:1, padding:'9px 12px', border:`1.5px solid ${PURPLE}`,
+                  borderRadius:10, background: resent ? '#F5F3FF' : '#fff', cursor: resending ? 'wait' : 'pointer',
+                  fontSize:12.5, fontWeight:600, color:PURPLE, fontFamily:FONT,
+                  transition:'background 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+                }}>
+                  {resending ? <><MiniSpinner />Sending…</> : resent ? '✓ Sent again!' : 'Resend email'}
+                </button>
+                <button onClick={() => { setSent(false); setEmail(''); setResent(false); }} style={{
+                  flex:1, padding:'9px 12px', border:'1.5px solid #E5E7EB',
+                  borderRadius:10, background:'#F9FAFB', cursor:'pointer',
+                  fontSize:12.5, fontWeight:600, color:'#374151', fontFamily:FONT,
+                }}>
+                  Try different email
+                </button>
               </div>
 
               <button onClick={onGoSignIn} style={{
@@ -128,6 +181,10 @@ export default function ForgotPassword({ onGoSignIn }) {
                 </div>
               </div>
 
+              <p style={{ fontSize:11.5, color:'#9CA3AF', margin:'-8px 0 16px', fontFamily:FONT }}>
+                The link expires in 1 hour · Check spam if not received
+              </p>
+
               <button type="submit" disabled={loading} style={{
                 width:'100%', padding:'12px 20px',
                 background:`linear-gradient(135deg,${PURPLE},#5B21B6)`,
@@ -172,4 +229,8 @@ export default function ForgotPassword({ onGoSignIn }) {
 
 function Spinner() {
   return <span style={{ width:15,height:15,border:'2px solid rgba(255,255,255,0.3)',borderTopColor:'#fff',borderRadius:'50%',display:'inline-block',flexShrink:0,animation:'tlSpin 0.7s linear infinite',marginRight:4 }} />;
+}
+
+function MiniSpinner() {
+  return <span style={{ width:12,height:12,border:'2px solid rgba(124,92,252,0.25)',borderTopColor:PURPLE,borderRadius:'50%',display:'inline-block',flexShrink:0,animation:'tlSpin 0.7s linear infinite' }} />;
 }
