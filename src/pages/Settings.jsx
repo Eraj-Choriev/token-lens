@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Bell, Download, Trash2, Shield, RefreshCw, AlertTriangle, CheckCircle2, FileText, BarChart3 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 const FONT = "'Inter', ui-sans-serif, system-ui";
 
@@ -71,8 +72,8 @@ function Section({ title, subtitle, icon: Icon, iconColor = '#7C5CFC', children 
   return (
     <div style={{
       background: '#fff', borderRadius: 16,
-      border: '1px solid #F0F0F5', padding: 28,
-      boxShadow: '0 1px 8px rgba(0,0,0,0.04)',
+      border: '1px solid rgba(124,92,252,0.1)', padding: 28,
+      boxShadow: '0 4px 24px rgba(124,92,252,0.07), 0 1px 4px rgba(0,0,0,0.04)',
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 20 }}>
         <div style={{
@@ -91,7 +92,7 @@ function Section({ title, subtitle, icon: Icon, iconColor = '#7C5CFC', children 
   );
 }
 
-export default function Settings({ notifEnabled: globalNotif, onToggleNotif }) {
+export default function Settings({ notifEnabled: globalNotif, onToggleNotif, lang = 'en' }) {
   const [cfg, setCfg]       = useState(getSettings);
   const [exports, setExports] = useState(getExports);
   const [saved, setSaved]   = useState(false);
@@ -122,10 +123,10 @@ export default function Settings({ notifEnabled: globalNotif, onToggleNotif }) {
     <div style={{ maxWidth: 680, margin: '0 auto', fontFamily: FONT }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.03em', margin: '0 0 4px', fontFamily: FONT }}>
-          Settings
+          {t('settings_title', lang)}
         </h1>
         <p style={{ fontSize: 13.5, color: '#6B7280', margin: 0 }}>
-          Manage notifications, exports, and account preferences
+          {t('settings_sub', lang)}
         </p>
       </div>
 
@@ -144,7 +145,7 @@ export default function Settings({ notifEnabled: globalNotif, onToggleNotif }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* Notifications */}
-        <Section title="Notifications" subtitle="Control when and how you receive alerts" icon={Bell}>
+        <Section title={t('notifications', lang)} subtitle={t('notif_sub', lang)} icon={Bell}>
           <Toggle
             label="Enable in-app notifications"
             sub="Show toast alerts inside the dashboard"
@@ -191,7 +192,7 @@ export default function Settings({ notifEnabled: globalNotif, onToggleNotif }) {
         </Section>
 
         {/* Data refresh */}
-        <Section title="Data & Refresh" subtitle="Control how often data updates" icon={RefreshCw} iconColor="#0098FF">
+        <Section title={t('data_refresh', lang)} subtitle="Control how often data updates" icon={RefreshCw} iconColor="#0098FF">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0' }}>
             <div>
               <p style={{ fontSize: 13.5, fontWeight: 600, color: '#1F2937', margin: 0, fontFamily: FONT }}>Auto-refresh interval</p>
@@ -217,7 +218,7 @@ export default function Settings({ notifEnabled: globalNotif, onToggleNotif }) {
         </Section>
 
         {/* Export history */}
-        <Section title="Export History" subtitle={`${exports.length} PDF report${exports.length !== 1 ? 's' : ''} exported`} icon={Download} iconColor="#00C48C">
+        <Section title={t('export_history', lang)} subtitle={`${exports.length} PDF report${exports.length !== 1 ? 's' : ''} exported`} icon={Download} iconColor="#00C48C">
           {exports.length === 0 ? (
             <div style={{
               textAlign: 'center', padding: '32px 16px',
@@ -320,7 +321,7 @@ export default function Settings({ notifEnabled: globalNotif, onToggleNotif }) {
         </Section>
 
         {/* Privacy & Security */}
-        <Section title="Privacy & Security" subtitle="Manage your data and account security" icon={Shield} iconColor="#F59E0B">
+        <Section title={t('privacy', lang)} subtitle="Manage your data and account security" icon={Shield} iconColor="#F59E0B">
           <Toggle
             label="Store usage data locally"
             sub="Keep token history in your browser's localStorage"

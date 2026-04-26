@@ -1,7 +1,13 @@
 import { useState, useRef } from 'react';
-import { Camera, Save, User, Mail, FileText, Globe, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Camera, Save, User, Mail, FileText, CheckCircle2 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 const FONT = "'Inter', ui-sans-serif, system-ui";
+
+const LANG_OPTIONS = [
+  { value: 'en', flag: '🇬🇧', label: 'English' },
+  { value: 'ru', flag: '🇷🇺', label: 'Русский' },
+];
 
 function getSettings() {
   try { return JSON.parse(localStorage.getItem('tl_settings') || '{}'); } catch { return {}; }
@@ -91,8 +97,8 @@ function Section({ title, subtitle, children }) {
   return (
     <div style={{
       background: '#fff', borderRadius: 16,
-      border: '1px solid #F0F0F5', padding: 28,
-      boxShadow: '0 1px 8px rgba(0,0,0,0.04)',
+      border: '1px solid rgba(124,92,252,0.1)', padding: 28,
+      boxShadow: '0 4px 24px rgba(124,92,252,0.07), 0 1px 4px rgba(0,0,0,0.04)',
     }}>
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, color: '#111827', margin: '0 0 4px', fontFamily: FONT, letterSpacing: '-0.02em' }}>{title}</h2>
@@ -105,7 +111,7 @@ function Section({ title, subtitle, children }) {
   );
 }
 
-export default function Profile({ user, onUpdateUser }) {
+export default function Profile({ user, onUpdateUser, lang = 'en', onLanguageChange }) {
   const fileRef = useRef(null);
 
   const [avatar, setAvatar] = useState(() => {
@@ -115,8 +121,7 @@ export default function Profile({ user, onUpdateUser }) {
   const [email,    setEmail]    = useState(user?.email    || '');
   const [username, setUsername] = useState(user?.username || email?.split('@')[0] || '');
   const [bio,      setBio]      = useState(user?.bio      || '');
-  const [timezone, setTimezone] = useState(user?.timezone || 'UTC');
-  const [language, setLanguage] = useState(user?.language || 'English');
+  const [language, setLanguage] = useState(lang);
 
   const [saved,  setSaved]  = useState(false);
   const [saving, setSaving] = useState(false);
@@ -140,12 +145,18 @@ export default function Profile({ user, onUpdateUser }) {
     localStorage.removeItem('tl_avatar');
   };
 
+  const handleLangSelect = (val) => {
+    setLanguage(val);
+    onLanguageChange?.(val);
+  };
+
   const handleSave = async () => {
     setSaving(true);
     await new Promise(r => setTimeout(r, 700));
-    const updated = { ...user, name, email, username, bio, timezone, language };
+    const updated = { ...user, name, email, username, bio, language };
     localStorage.setItem('tl_auth', JSON.stringify(updated));
     onUpdateUser(updated);
+    onLanguageChange?.(language);
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
@@ -153,20 +164,19 @@ export default function Profile({ user, onUpdateUser }) {
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', fontFamily: FONT }}>
-      {/* Page header */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.03em', margin: '0 0 4px', fontFamily: FONT }}>
-          My Profile
+          {t('my_profile', lang)}
         </h1>
         <p style={{ fontSize: 13.5, color: '#6B7280', margin: 0 }}>
-          Manage your personal information and preferences
+          {t('profile_sub', lang)}
         </p>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* Avatar section */}
-        <Section title="Profile Photo" subtitle="Upload a photo to personalize your account">
+        <Section title={t('profile_photo', lang)} subtitle={t('profile_photo_sub', lang)}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
             <Avatar src={avatar} initials={initials} size={80} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -206,88 +216,61 @@ export default function Profile({ user, onUpdateUser }) {
         </Section>
 
         {/* Personal info */}
-        <Section title="Personal Information" subtitle="Your name and contact details">
+        <Section title={t('personal_info', lang)} subtitle={t('personal_info_sub', lang)}>
           <FormField
-            label="Full Name" icon={User} value={name}
+            label={t('full_name', lang)} icon={User} value={name}
             onChange={e => setName(e.target.value)}
             placeholder="John Doe"
           />
           <FormField
-            label="Email Address" icon={Mail} type="email" value={email}
+            label={t('email_address', lang)} icon={Mail} type="email" value={email}
             onChange={e => setEmail(e.target.value)}
             placeholder="you@example.com"
             hint="Your email is used for sign-in and notifications"
           />
           <FormField
-            label="Username" icon={User} value={username}
+            label={t('username', lang)} icon={User} value={username}
             onChange={e => setUsername(e.target.value)}
             placeholder="johndoe"
             hint="Used as your display handle"
           />
           <FormField
-            label="Bio" icon={FileText} type="textarea" value={bio}
+            label={t('bio', lang)} icon={FileText} type="textarea" value={bio}
             onChange={e => setBio(e.target.value)}
             placeholder="Tell us a bit about yourself…"
           />
         </Section>
 
-        {/* Preferences */}
-        <Section title="Preferences" subtitle="Localization and display settings">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#374151', marginBottom: 6, fontFamily: FONT, letterSpacing: '0.01em' }}>
-                Language
-              </label>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 0,
-                border: '1.5px solid #E5E7EB', borderRadius: 10, overflow: 'hidden',
-                background: '#F9FAFB',
-              }}>
-                <span style={{ width: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF' }}>
-                  <Globe size={14} strokeWidth={2} />
-                </span>
-                <select
-                  value={language}
-                  onChange={e => setLanguage(e.target.value)}
-                  style={{
-                    flex: 1, border: 'none', outline: 'none', background: 'transparent',
-                    padding: '11px 8px 11px 0', fontSize: 13.5, color: '#111827', fontFamily: FONT,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {['English','Spanish','French','German','Japanese','Chinese','Portuguese'].map(l => (
-                    <option key={l}>{l}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#374151', marginBottom: 6, fontFamily: FONT, letterSpacing: '0.01em' }}>
-                Timezone
-              </label>
-              <div style={{
-                display: 'flex', alignItems: 'center',
-                border: '1.5px solid #E5E7EB', borderRadius: 10, overflow: 'hidden',
-                background: '#F9FAFB',
-              }}>
-                <span style={{ width: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF' }}>
-                  <Clock size={14} strokeWidth={2} />
-                </span>
-                <select
-                  value={timezone}
-                  onChange={e => setTimezone(e.target.value)}
-                  style={{
-                    flex: 1, border: 'none', outline: 'none', background: 'transparent',
-                    padding: '11px 8px 11px 0', fontSize: 13.5, color: '#111827', fontFamily: FONT,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {['UTC','UTC-5 (EST)','UTC-8 (PST)','UTC+1 (CET)','UTC+3 (MSK)','UTC+5:30 (IST)','UTC+8 (CST)','UTC+9 (JST)'].map(tz => (
-                    <option key={tz}>{tz}</option>
-                  ))}
-                </select>
-              </div>
+        {/* Preferences — language only */}
+        <Section title={t('preferences', lang)} subtitle={t('preferences_sub', lang)}>
+          <div>
+            <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#374151', marginBottom: 10, fontFamily: FONT, letterSpacing: '0.01em' }}>
+              {t('language', lang)}
+            </label>
+            <div style={{ display: 'flex', gap: 10 }}>
+              {LANG_OPTIONS.map(({ value, flag, label: optLabel }) => {
+                const active = language === value;
+                return (
+                  <button
+                    key={value}
+                    onClick={() => handleLangSelect(value)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 20px', borderRadius: 12, cursor: 'pointer',
+                      border: `2px solid ${active ? '#7C5CFC' : '#E5E7EB'}`,
+                      background: active ? 'linear-gradient(135deg,rgba(124,92,252,0.08),rgba(167,139,250,0.06))' : '#F9FAFB',
+                      color: active ? '#7C5CFC' : '#6B7280',
+                      fontFamily: FONT, fontSize: 14, fontWeight: active ? 700 : 500,
+                      boxShadow: active ? '0 0 0 3px rgba(124,92,252,0.12), 0 2px 8px rgba(124,92,252,0.15)' : 'none',
+                      transition: 'all 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+                      transform: active ? 'scale(1.03)' : 'scale(1)',
+                    }}
+                  >
+                    <span style={{ fontSize: 22 }}>{flag}</span>
+                    <span>{optLabel}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </Section>
@@ -296,15 +279,16 @@ export default function Profile({ user, onUpdateUser }) {
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           background: '#fff', borderRadius: 16, padding: '16px 24px',
-          border: '1px solid #F0F0F5', boxShadow: '0 1px 8px rgba(0,0,0,0.04)',
+          border: '1px solid rgba(124,92,252,0.1)',
+          boxShadow: '0 4px 24px rgba(124,92,252,0.07)',
         }}>
           {saved ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#10B981', fontSize: 13.5, fontWeight: 600, fontFamily: FONT }}>
-              <CheckCircle2 size={16} /> Changes saved successfully
+              <CheckCircle2 size={16} /> {t('changes_saved', lang)}
             </div>
           ) : (
             <p style={{ fontSize: 13, color: '#9CA3AF', margin: 0, fontFamily: FONT }}>
-              Unsaved changes will be lost
+              {t('unsaved', lang)}
             </p>
           )}
           <button
@@ -322,8 +306,8 @@ export default function Profile({ user, onUpdateUser }) {
             }}
           >
             {saving
-              ? <><Spinner /> Saving…</>
-              : <><Save size={14} strokeWidth={2.5} /> Save Changes</>
+              ? <><Spinner /> {t('saving', lang)}</>
+              : <><Save size={14} strokeWidth={2.5} /> {t('save_changes', lang)}</>
             }
           </button>
         </div>

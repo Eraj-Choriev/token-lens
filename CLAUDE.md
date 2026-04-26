@@ -23,6 +23,7 @@ npm run deploy          # Deploy to GitHub Pages (gh-pages -d dist)
 ## Architecture
 
 ### Data Flow
+
 1. **`useTokenData()` hook** (`src/hooks/useTokenData.js`) — main data source
    - Auto-fetches mock data every 60 seconds
    - Generates weekly, monthly, hourly, task breakdown, recent requests, session data, stats, plan usage, and efficiency tips

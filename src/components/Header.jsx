@@ -1,13 +1,48 @@
 import { useState, useRef, useEffect } from 'react';
 import { RefreshCw, Bell, BellOff, BellRing, Menu, ChevronDown, LogOut, Settings, User } from 'lucide-react';
 import DownloadButton from './DownloadButton';
+import { t } from '../lib/i18n';
 
-const VIEW_LABELS = {
-  dashboard: 'Overview',
-  analytics: 'Analytics',
-  profile:   'My Profile',
-  settings:  'Settings',
-};
+const VIEW_LABELS = { dashboard: 'overview', analytics: 'analytics', profile: 'profile', settings: 'settings' };
+
+const LANG_OPTIONS = [
+  { value: 'en', flag: '🇬🇧', label: 'EN' },
+  { value: 'ru', flag: '🇷🇺', label: 'RU' },
+];
+
+function LangSwitcher({ lang, onLanguageChange }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 2,
+      background: '#F0F2F7', borderRadius: 10, padding: 2,
+      border: '1px solid #E4E8F0',
+    }}>
+      {LANG_OPTIONS.map(({ value, flag, label }) => {
+        const active = lang === value;
+        return (
+          <button
+            key={value}
+            onClick={() => onLanguageChange(value)}
+            title={value === 'en' ? 'English' : 'Русский'}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              padding: '3px 8px', borderRadius: 8, border: 'none', cursor: 'pointer',
+              background: active ? 'linear-gradient(135deg,#7C5CFC,#6D28D9)' : 'transparent',
+              color: active ? '#fff' : '#8B95A8',
+              fontSize: 11, fontWeight: 700, letterSpacing: '0.02em',
+              transition: 'all 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+              boxShadow: active ? '0 2px 8px rgba(124,92,252,0.35)' : 'none',
+              transform: active ? 'scale(1.05)' : 'scale(1)',
+            }}
+          >
+            <span style={{ fontSize: 13, lineHeight: 1 }}>{flag}</span>
+            <span>{label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function UserAvatar({ src, initials, size = 28 }) {
   return (
@@ -24,7 +59,7 @@ function UserAvatar({ src, initials, size = 28 }) {
   );
 }
 
-function UserMenu({ user, onSignOut, onNavigate }) {
+function UserMenu({ user, onSignOut, onNavigate, lang }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -80,8 +115,8 @@ function UserMenu({ user, onSignOut, onNavigate }) {
           </div>
 
           {[
-            { icon: User, label: 'My Profile', view: 'profile' },
-            { icon: Settings, label: 'Settings', view: 'settings' },
+            { icon: User,     label: t('profile', lang),  view: 'profile'  },
+            { icon: Settings, label: t('settings', lang), view: 'settings' },
           ].map(({ icon: Icon, label, view }) => (
             <button key={view} onClick={() => go(view)} style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: 10,
@@ -119,6 +154,7 @@ export default function Header({
   lastUpdated, refreshing, onRefresh,
   notifPermission, notifEnabled, onToggleNotif, onRequestNotif,
   activeView, data, onMenuOpen, user, onSignOut, onNavigate,
+  lang, onLanguageChange,
 }) {
   const [justToggled, setJustToggled] = useState(false);
 
@@ -139,11 +175,14 @@ export default function Header({
   const bellActive  = bellGranted && notifEnabled;
   const BellIcon    = bellActive ? BellRing : bellGranted ? BellOff : Bell;
 
+  const viewKey = VIEW_LABELS[activeView] ?? 'overview';
+
   return (
     <header className="flex items-center justify-between mb-6 lg:mb-7 animate-fade-in" style={{
-      background: '#fff', border: '1px solid #E4E8F0',
+      background: 'rgba(255,255,255,0.97)',
+      border: '1px solid rgba(124,92,252,0.12)',
       borderRadius: 18, padding: '12px 18px',
-      boxShadow: '0 1px 8px rgba(0,0,0,0.04)',
+      boxShadow: '0 4px 24px rgba(124,92,252,0.08), 0 1px 4px rgba(0,0,0,0.04)',
       position: 'relative', zIndex: 200,
     }}>
       <div className="flex items-center gap-3">
@@ -153,10 +192,10 @@ export default function Header({
         </button>
         <div>
           <h1 style={{ fontWeight: 700, fontSize: 20, color: '#1A1E2E', letterSpacing: '-0.4px', lineHeight: 1.1, margin: 0 }}>
-            {VIEW_LABELS[activeView] ?? 'Overview'}
+            {t(viewKey, lang)}
           </h1>
           <p style={{ fontSize: 12.5, color: '#8B95A8', margin: 0, marginTop: 2 }}>
-            AI token usage &amp; spend analytics
+            {t('ai_subtitle', lang)}
           </p>
         </div>
       </div>
@@ -164,10 +203,13 @@ export default function Header({
       <div className="flex items-center gap-2.5">
         <DownloadButton data={data} disabled={!data} />
 
-        <div className="hidden sm:flex items-center gap-1.5 rounded-2xl px-3 py-1.5 border text-xs text-muted"
+        {/* Now bar with language switcher */}
+        <div className="hidden sm:flex items-center gap-2 rounded-2xl px-3 py-1.5 border"
           style={{ background: '#F5F6FA', borderColor: '#E4E8F0' }}>
           <div className="dot-live" style={{ background: refreshing ? '#F5A623' : '#00C48C', opacity: refreshing ? 1 : 0.7 }} />
-          <span className="font-mono">{refreshing ? 'Refreshing…' : `Updated ${timeStr}`}</span>
+          <span className="font-mono text-xs text-muted">{refreshing ? t('refreshing', lang) : `${t('updated', lang)} ${timeStr}`}</span>
+          <div style={{ width: 1, height: 14, background: '#E4E8F0', margin: '0 2px' }} />
+          <LangSwitcher lang={lang} onLanguageChange={onLanguageChange} />
         </div>
 
         <button onClick={onRefresh} disabled={refreshing} title="Refresh data" style={{
@@ -182,7 +224,7 @@ export default function Header({
           <RefreshCw size={14} style={{ color: '#8B95A8', animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
         </button>
 
-        <button onClick={handleBellClick} title={bellActive ? 'Mute alerts' : 'Enable alerts'} style={{
+        <button onClick={handleBellClick} title={bellActive ? t('mute_alerts', lang) : t('enable_alerts', lang)} style={{
           width: 36, height: 36, borderRadius: 10, position: 'relative',
           background: bellActive ? '#E5DCFF' : 'white',
           border: `1px solid ${bellActive ? '#C4B5FD' : '#E4E8F0'}`,
@@ -198,7 +240,7 @@ export default function Header({
           }} />}
         </button>
 
-        <UserMenu user={user} onSignOut={onSignOut} onNavigate={onNavigate} />
+        <UserMenu user={user} onSignOut={onSignOut} onNavigate={onNavigate} lang={lang} />
       </div>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </header>

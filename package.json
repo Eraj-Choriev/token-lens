@@ -14,6 +14,7 @@
   "homepage": "https://Eraj-Choriev.github.io/token-lens",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.0",
+    "firebase": "^12.12.1",
     "framer-motion": "^12.38.0",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",

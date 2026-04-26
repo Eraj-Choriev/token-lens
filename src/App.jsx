@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Zap, DollarSign, Hash, TrendingUp, BarChart2, MessageSquare } from 'lucide-react';
 import Sidebar               from './components/Sidebar';
 import Header                from './components/Header';
@@ -17,6 +17,8 @@ import SignIn                from './pages/SignIn';
 import SignUp                from './pages/SignUp';
 import Profile               from './pages/Profile';
 import Settings              from './pages/Settings';
+import { t }                 from './lib/i18n';
+import { auth, onAuthStateChanged, logOut } from './lib/firebase';
 
 function fmt(n) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -24,20 +26,40 @@ function fmt(n) {
   return String(Math.round(n));
 }
 
-function getStoredUser() {
-  try { return JSON.parse(localStorage.getItem('tl_auth')); } catch { return null; }
+function getStoredLang() {
+  try { return localStorage.getItem('tl_lang') || 'en'; } catch { return 'en'; }
+}
+
+function fbUserToLocal(fbUser) {
+  if (!fbUser) return null;
+  return { email: fbUser.email, name: fbUser.displayName, photoURL: fbUser.photoURL, uid: fbUser.uid };
 }
 
 export default function App() {
-  const [user, setUser]             = useState(getStoredUser);   // null = not signed in
-  const [authPage, setAuthPage]     = useState('signin');        // 'signin' | 'signup'
+  const [user, setUser]             = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authPage, setAuthPage]     = useState('signin');
   const [activeNav, setActiveNav]   = useState('dashboard');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifEnabled, setNotifEnabled]   = useState(true);
   const [notifPermission, setNotifPermission] = useState('granted');
+  const [lang, setLang]             = useState(getStoredLang);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, fbUser => {
+      setUser(fbUserToLocal(fbUser));
+      setAuthLoading(false);
+    });
+    return unsubscribe;
+  }, []);
 
   const { data, loading, refreshing, lastUpdated, refresh } = useTokenData();
   const { toasts, addToast, removeToast } = useToasts();
+
+  const handleLanguageChange = useCallback((newLang) => {
+    setLang(newLang);
+    localStorage.setItem('tl_lang', newLang);
+  }, []);
 
   const handleRequestNotif = useCallback(async () => {
     setNotifPermission('granted');
@@ -56,19 +78,15 @@ export default function App() {
   }, [notifEnabled, addToast]);
 
   const handleSignIn = useCallback(u => {
-    setUser(u);
     addToast({ title: `Welcome back${u.name ? ', ' + u.name : ''}!`, body: 'You\'re now signed in to TokenLens.', urgency: 'info' });
   }, [addToast]);
 
   const handleSignUp = useCallback(u => {
-    setUser(u);
-    localStorage.setItem('tl_auth', JSON.stringify(u));
-    addToast({ title: `Account created!`, body: `Welcome to TokenLens, ${u.name || u.email}!`, urgency: 'info' });
+    addToast({ title: 'Account created!', body: `Welcome to TokenLens, ${u.name || u.email}!`, urgency: 'info' });
   }, [addToast]);
 
-  const handleSignOut = useCallback(() => {
-    localStorage.removeItem('tl_auth');
-    setUser(null);
+  const handleSignOut = useCallback(async () => {
+    await logOut();
     setAuthPage('signin');
   }, []);
 
@@ -77,16 +95,30 @@ export default function App() {
     addToast({ title: 'Profile updated', body: 'Your changes have been saved.', urgency: 'info' });
   }, [addToast]);
 
-  useNotifications(data?.planUsage, notifEnabled, addToast);
+  // Only fire plan-limit notifications when a user is actually signed in
+  useNotifications(user ? data?.planUsage : null, notifEnabled, addToast);
 
   // ── Auth gate ──────────────────────────────────────────────
+  if (authLoading) {
+    return (
+      <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(135deg,#EEF2FF,#F5EFFF,#EFF6FF)' }}>
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
+          <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,#7C5CFC,#A78BFA)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 6px 20px rgba(124,92,252,0.32)' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <div style={{ width:28, height:28, border:'3px solid rgba(124,92,252,0.2)', borderTopColor:'#7C5CFC', borderRadius:'50%', animation:'tlSpin 0.7s linear infinite' }} />
+        </div>
+        <style>{`@keyframes tlSpin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <>
-        <ToastNotifications toasts={toasts} onDismiss={removeToast} />
         {authPage === 'signin'
-          ? <SignIn onSignIn={handleSignIn} onGoSignUp={() => setAuthPage('signup')} />
-          : <SignUp onSignUp={handleSignUp} onGoSignIn={() => setAuthPage('signin')} />
+          ? <SignIn onSignIn={handleSignIn} onGoSignUp={() => setAuthPage('signup')} lang={lang} />
+          : <SignUp onSignUp={handleSignUp} onGoSignIn={() => setAuthPage('signin')} lang={lang} />
         }
       </>
     );
@@ -95,13 +127,14 @@ export default function App() {
   const s = data?.stats;
 
   return (
-    <div className="flex min-h-screen w-full" style={{ background: '#F5F6FA', flex: 1 }}>
+    <div className="flex min-h-screen w-full" style={{ background: 'linear-gradient(135deg,#EEF2FF 0%,#F5EFFF 40%,#EFF6FF 75%,#F0FDF4 100%)', flex: 1 }}>
       <Sidebar
         active={activeNav}
         onChange={setActiveNav}
         planUsage={data?.planUsage}
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
+        lang={lang}
       />
 
       <ToastNotifications toasts={toasts} onDismiss={removeToast} />
@@ -122,14 +155,18 @@ export default function App() {
             user={user}
             onSignOut={handleSignOut}
             onNavigate={setActiveNav}
+            lang={lang}
+            onLanguageChange={handleLanguageChange}
           />
 
+          <div key={activeNav} className="page-transition">
+
           {activeNav === 'profile' && (
-            <Profile user={user} onUpdateUser={handleUpdateUser} />
+            <Profile user={user} onUpdateUser={handleUpdateUser} lang={lang} onLanguageChange={handleLanguageChange} />
           )}
 
           {activeNav === 'settings' && (
-            <Settings notifEnabled={notifEnabled} onToggleNotif={handleToggleNotif} />
+            <Settings notifEnabled={notifEnabled} onToggleNotif={handleToggleNotif} lang={lang} />
           )}
 
           {activeNav === 'analytics' && (
@@ -140,18 +177,18 @@ export default function App() {
 
           {/* Row 1: Stat cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-4 lg:mb-5">
-            <StatCard label="Tokens Today"    value={s?.today?.tokens ?? 0}       valueType="tokens"   icon={Zap}          accent="lavender" delta={12} sub="vs yesterday" delay={0.05} loading={loading} />
-            <StatCard label="Weekly Tokens"   value={s?.week?.tokens ?? 0}        valueType="tokens"   icon={TrendingUp}   accent="sky"      delta={8}  sub="this week"    delay={0.10} loading={loading} />
-            <StatCard label="Today's Spend"   value={s?.today?.cost ?? 0}         valueType="currency" icon={DollarSign}   accent="peach"    delta={-3} sub="vs yesterday" delay={0.15} loading={loading} />
-            <StatCard label="Requests Today"  value={s?.today?.requests ?? 0}     valueType="requests" icon={Hash}         accent="mint"     delta={5}  sub="API calls"    delay={0.20} loading={loading} />
+            <StatCard label={t('tokens_today', lang)}   value={s?.today?.tokens ?? 0}       valueType="tokens"   icon={Zap}          accent="lavender" delta={12} sub={t('vs_yesterday', lang)} delay={0.05} loading={loading} />
+            <StatCard label={t('weekly_tokens', lang)}  value={s?.week?.tokens ?? 0}        valueType="tokens"   icon={TrendingUp}   accent="sky"      delta={8}  sub={t('this_week', lang)}    delay={0.10} loading={loading} />
+            <StatCard label={t('todays_spend', lang)}   value={s?.today?.cost ?? 0}         valueType="currency" icon={DollarSign}   accent="peach"    delta={-3} sub={t('vs_yesterday', lang)} delay={0.15} loading={loading} />
+            <StatCard label={t('requests_today', lang)} value={s?.today?.requests ?? 0}     valueType="requests" icon={Hash}         accent="mint"     delta={5}  sub={t('api_calls', lang)}    delay={0.20} loading={loading} />
           </div>
 
           {/* Row 2: More stats */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-4 lg:mb-5">
-            <StatCard label="Avg Tokens/Req"  value={s?.avgTokensPerRequest ?? 0} valueType="tokens"   icon={MessageSquare} accent="yellow" sub="per request"  delay={0.25} loading={loading} />
-            <StatCard label="Weekly Spend"    value={s?.week?.cost ?? 0}          valueType="currency" icon={DollarSign}   accent="rose"     delta={-7} sub="7-day total" delay={0.30} loading={loading} />
-            <StatCard label="All-Time Tokens" value={s?.allTime?.tokens ?? 0}     valueType="tokens"   icon={BarChart2}    accent="sky"               sub="lifetime"    delay={0.35} loading={loading} />
-            <StatCard label="Efficiency"      value={s?.efficiency ?? 0}          valueType="requests" icon={TrendingUp}   accent="mint"     delta={2}  sub="output ratio" delay={0.40} loading={loading} />
+            <StatCard label={t('avg_tokens', lang)}     value={s?.avgTokensPerRequest ?? 0} valueType="tokens"   icon={MessageSquare} accent="yellow" sub={t('per_request', lang)}    delay={0.25} loading={loading} />
+            <StatCard label={t('weekly_spend', lang)}   value={s?.week?.cost ?? 0}          valueType="currency" icon={DollarSign}   accent="rose"     delta={-7} sub={t('seven_day_total', lang)} delay={0.30} loading={loading} />
+            <StatCard label={t('alltime_tokens', lang)} value={s?.allTime?.tokens ?? 0}     valueType="tokens"   icon={BarChart2}    accent="sky"               sub={t('lifetime', lang)}     delay={0.35} loading={loading} />
+            <StatCard label={t('efficiency', lang)}     value={s?.efficiency ?? 0}          valueType="requests" icon={TrendingUp}   accent="mint"     delta={2}  sub={t('output_ratio', lang)} delay={0.40} loading={loading} />
           </div>
 
           {/* Row 3: Weekly chart + Session */}
@@ -159,12 +196,12 @@ export default function App() {
             <div className="lg:col-span-7 card-solid rounded-3xl p-5 animate-fade-up" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-sm font-semibold text-[#1A1E2E]">Weekly Token Usage</p>
-                  <p className="text-xs text-muted mt-0.5">Input vs Output · last 7 days</p>
+                  <p className="text-sm font-semibold text-[#1A1E2E]">{t('weekly_usage', lang)}</p>
+                  <p className="text-xs text-muted mt-0.5">{t('weekly_sub', lang)}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1.5 text-xs text-muted"><span className="w-3 h-1.5 rounded-full bg-[#7C5CFC] inline-block" />Input</span>
-                  <span className="flex items-center gap-1.5 text-xs text-muted"><span className="w-3 h-1.5 rounded-full bg-[#00C48C] inline-block" />Output</span>
+                  <span className="flex items-center gap-1.5 text-xs text-muted"><span className="w-3 h-1.5 rounded-full bg-[#7C5CFC] inline-block" />{t('input', lang)}</span>
+                  <span className="flex items-center gap-1.5 text-xs text-muted"><span className="w-3 h-1.5 rounded-full bg-[#00C48C] inline-block" />{t('output', lang)}</span>
                 </div>
               </div>
               <div className="h-[220px]">
@@ -180,8 +217,8 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 mb-4 lg:mb-5">
             <div className="lg:col-span-5 card-solid rounded-3xl p-5 animate-fade-up" style={{ animationDelay: '0.35s', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex items-center justify-between mb-4">
-                <p className="text-sm font-semibold text-[#1A1E2E]">Today by Hour</p>
-                <span className="text-xs text-muted">06:00 – 22:00</span>
+                <p className="text-sm font-semibold text-[#1A1E2E]">{t('today_by_hour', lang)}</p>
+                <span className="text-xs text-muted">{t('hour_sub', lang)}</span>
               </div>
               <div className="h-[200px]">
                 <HourlyChart data={data?.hourly} loading={loading} />
@@ -199,8 +236,8 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 mb-4 lg:mb-5">
             <div className="lg:col-span-7 card-solid rounded-3xl p-5 animate-fade-up" style={{ animationDelay: '0.40s', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex items-center justify-between mb-4">
-                <p className="text-sm font-semibold text-[#1A1E2E]">Daily Spend</p>
-                <p className="text-xs text-muted">7-day cost breakdown</p>
+                <p className="text-sm font-semibold text-[#1A1E2E]">{t('daily_spend', lang)}</p>
+                <p className="text-xs text-muted">{t('seven_day', lang)}</p>
               </div>
               <div className="h-[200px]">
                 <CostBarChart data={data?.weekly} loading={loading} />
@@ -214,8 +251,8 @@ export default function App() {
           {/* Row 6: Full request table */}
           <div className="card-solid rounded-3xl p-5 animate-fade-up" style={{ animationDelay: '0.50s', opacity: 0, animationFillMode: 'forwards' }}>
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-semibold text-[#1A1E2E]">Request History</p>
-              <span className="text-xs text-muted">Last {data?.recentRequests?.length ?? '—'} requests</span>
+              <p className="text-sm font-semibold text-[#1A1E2E]">{t('request_history', lang)}</p>
+              <span className="text-xs text-muted">{t('last_n', lang)} {data?.recentRequests?.length ?? '—'} {t('n_requests', lang)}</span>
             </div>
             {loading ? (
               <div className="flex flex-col gap-2">{[1,2,3,4,5].map(i=><div key={i} className="shimmer-bg h-10 rounded-xl"/>)}</div>
@@ -224,7 +261,7 @@ export default function App() {
                 <table className="w-full min-w-[600px] text-sm">
                   <thead>
                     <tr className="text-muted text-xs font-semibold">
-                      {['Task','Model','Input','Output','Total','Cost','Time'].map(h=>(
+                      {[t('task',lang),t('model',lang),t('input',lang),t('output',lang),t('total',lang),t('cost',lang),t('time',lang)].map(h=>(
                         <th key={h} className="text-left py-2 px-3 font-medium">{h}</th>
                       ))}
                     </tr>
@@ -257,10 +294,10 @@ export default function App() {
             )}
           </div>
 
-          <p className="text-center text-xs text-muted mt-6 pb-4">
-            TokenLens · Powered by Claude API · Auto-refreshes every 60s
-          </p>
+          <p className="text-center text-xs text-muted mt-6 pb-4">{t('footer', lang)}</p>
           </>}
+
+          </div>{/* end page-transition */}
         </div>
       </main>
     </div>

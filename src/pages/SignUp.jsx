@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Eye, EyeOff, Zap, ArrowRight, AlertCircle, Mail, Lock, User, Check } from 'lucide-react';
+import AuthBackground from '../components/AuthBackground';
+import { signUpWithEmail, signInWithGoogle, firebaseErrorMessage } from '../lib/firebase';
 
 const FONT   = "'Inter', ui-sans-serif, system-ui";
 const PURPLE = '#7C5CFC';
@@ -9,60 +11,6 @@ const PW_RULES = [
   { test: v => /[A-Z]/.test(v), label: 'Uppercase letter' },
   { test: v => /\d/.test(v),    label: 'One number'       },
 ];
-
-function Background() {
-  return (
-    <div aria-hidden style={{ position:'fixed', inset:0, zIndex:0, overflow:'hidden', pointerEvents:'none' }}>
-      <div style={{ position:'absolute', inset:0, background:'linear-gradient(160deg,#FAF9FF 0%,#F5F3FF 35%,#F0F4FF 65%,#F5FBFF 100%)' }} />
-
-      <div style={{ position:'absolute', bottom:'-8%', right:'-4%', width:480, height:480, borderRadius:'50%', background:'radial-gradient(circle,rgba(124,92,252,0.10) 0%,transparent 68%)', animation:'orbA 15s ease-in-out infinite' }} />
-      <div style={{ position:'absolute', top:'-10%', left:'-6%', width:400, height:400, borderRadius:'50%', background:'radial-gradient(circle,rgba(0,196,140,0.07) 0%,transparent 68%)', animation:'orbA 19s ease-in-out infinite reverse' }} />
-
-      {/* Mini area chart top-right */}
-      <svg style={{ position:'absolute', right:'5%', top:'10%', opacity:0.09 }} width="200" height="80" viewBox="0 0 200 80">
-        <defs><linearGradient id="suAG" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={PURPLE} stopOpacity="0.25" />
-          <stop offset="100%" stopColor={PURPLE} stopOpacity="0.02" />
-        </linearGradient></defs>
-        <path d="M0,65 C25,50 45,35 75,42 C105,50 120,15 165,20 L200,15" fill="none" stroke={PURPLE} strokeWidth="2.5" strokeLinecap="round"/>
-        <path d="M0,65 C25,50 45,35 75,42 C105,50 120,15 165,20 L200,15 L200,80 L0,80 Z" fill="url(#suAG)"/>
-      </svg>
-
-      {/* Mini bar chart bottom-left */}
-      <svg style={{ position:'absolute', left:'5%', bottom:'12%', opacity:0.09 }} width="160" height="100" viewBox="0 0 160 100">
-        {[30,52,38,68,44,78,58].map((h,i) => (
-          <rect key={i} x={i*21+4} y={100-h} width="14" height={h} rx="3" fill={PURPLE} />
-        ))}
-      </svg>
-
-      {/* Floating stat pills */}
-      {[
-        { top:'22%', left:'6%',   label:'42 req',   sub:'today',     color:PURPLE  },
-        { top:'55%', right:'4%',  label:'$2.14',    sub:'weekly cost', color:'#00C48C' },
-        { bottom:'24%', left:'38%', label:'↑ 12%',  sub:'efficiency',  color:'#0098FF' },
-      ].map((p,i) => (
-        <div key={i} style={{
-          position:'absolute', top:p.top, left:p.left, right:p.right, bottom:p.bottom,
-          background:'rgba(255,255,255,0.70)', backdropFilter:'blur(8px)',
-          border:'1px solid rgba(255,255,255,0.9)', borderRadius:10,
-          padding:'8px 12px', opacity:0.55,
-          animation:`orbA ${10+i*2.5}s ease-in-out infinite ${i*1.5}s`,
-          boxShadow:'0 2px 12px rgba(0,0,0,0.05)',
-        }}>
-          <p style={{ fontSize:14, fontWeight:700, color:p.color, margin:0, fontFamily:FONT, letterSpacing:'-0.02em', fontVariantNumeric:'tabular-nums' }}>{p.label}</p>
-          <p style={{ fontSize:10, color:'#9CA3AF', margin:0, fontFamily:FONT }}>{p.sub}</p>
-        </div>
-      ))}
-
-      <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', opacity:0.025 }}>
-        <defs><pattern id="suGrid" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
-          <circle cx="1.5" cy="1.5" r="1.2" fill={PURPLE} />
-        </pattern></defs>
-        <rect width="100%" height="100%" fill="url(#suGrid)" />
-      </svg>
-    </div>
-  );
-}
 
 function Field({ id, label, icon: Icon, type, placeholder, value, onChange, error, right, autoComplete, children }) {
   const [focused, setFocused] = useState(false);
@@ -108,8 +56,9 @@ export default function SignUp({ onSignUp, onGoSignIn }) {
   const [showCf, setShowCf]     = useState(false);
   const [errors, setErrors]     = useState({});
   const [loading, setLoading]   = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
-  const clr = k => setErrors(e => ({ ...e, [k]:'' }));
+  const clr = k => setErrors(e => ({ ...e, [k]:'', form:'' }));
 
   const validate = () => {
     const e = {};
@@ -130,10 +79,31 @@ export default function SignUp({ onSignUp, onGoSignIn }) {
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setErrors({});
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1100));
-    setLoading(false);
-    localStorage.setItem('tl_auth', JSON.stringify({ name, email }));
-    onSignUp({ name, email });
+    try {
+      const credential = await signUpWithEmail(email, password, name.trim());
+      const fbUser = credential.user;
+      onSignUp({ email: fbUser.email, name: fbUser.displayName || name.trim(), photoURL: fbUser.photoURL, uid: fbUser.uid });
+    } catch (err) {
+      setErrors({ form: firebaseErrorMessage(err.code) });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setGoogleLoading(true);
+    setErrors({});
+    try {
+      const credential = await signInWithGoogle();
+      const fbUser = credential.user;
+      onSignUp({ email: fbUser.email, name: fbUser.displayName, photoURL: fbUser.photoURL, uid: fbUser.uid });
+    } catch (err) {
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setErrors({ form: firebaseErrorMessage(err.code) });
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   const pwScore = PW_RULES.filter(r => r.test(password)).length;
@@ -142,7 +112,7 @@ export default function SignUp({ onSignUp, onGoSignIn }) {
 
   return (
     <>
-      <Background />
+      <AuthBackground />
       <div style={{ position:'relative', zIndex:1, width:'100%', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px 16px', fontFamily:FONT }}>
         <div style={{
           width:'100%', maxWidth:420,
@@ -151,7 +121,6 @@ export default function SignUp({ onSignUp, onGoSignIn }) {
           boxShadow:`0 24px 64px rgba(124,92,252,0.10), 0 2px 16px rgba(0,0,0,0.06)`,
           padding:32, animation:'cardIn 0.45s cubic-bezier(0.34,1.56,0.64,1) both',
         }}>
-          {/* Brand — same purple as Sign In */}
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', marginBottom:24 }}>
             <div style={{
               width:50, height:50, borderRadius:14,
@@ -171,6 +140,13 @@ export default function SignUp({ onSignUp, onGoSignIn }) {
               </button>
             </p>
           </div>
+
+          {errors.form && (
+            <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 14px', background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:10, marginBottom:14 }}>
+              <AlertCircle size={14} color="#DC2626" style={{ flexShrink:0 }} />
+              <span style={{ fontSize:12.5, color:'#DC2626', fontFamily:FONT }}>{errors.form}</span>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} noValidate>
             <Field id="su-name" label="Full Name" icon={User} type="text" placeholder="John Doe"
@@ -236,18 +212,18 @@ export default function SignUp({ onSignUp, onGoSignIn }) {
               )}
             </div>
 
-            <button type="submit" disabled={loading} style={{
+            <button type="submit" disabled={loading || googleLoading} style={{
               width:'100%', padding:'12px 20px',
               background:`linear-gradient(135deg,${PURPLE},#5B21B6)`,
               color:'#fff', border:'none', borderRadius:10,
               fontSize:14, fontWeight:600, letterSpacing:'-0.01em',
-              cursor:loading?'not-allowed':'pointer',
+              cursor:(loading||googleLoading)?'not-allowed':'pointer',
               display:'flex', alignItems:'center', justifyContent:'center', gap:7,
               boxShadow:loading?'none':`0 4px 16px rgba(124,92,252,0.38)`,
-              opacity:loading?0.8:1, transition:'opacity 0.15s', fontFamily:FONT,
+              opacity:(loading||googleLoading)?0.8:1, transition:'opacity 0.15s', fontFamily:FONT,
             }}
-              onMouseEnter={e=>{ if(!loading) e.currentTarget.style.opacity='0.88'; }}
-              onMouseLeave={e=>{ e.currentTarget.style.opacity=loading?'0.8':'1'; }}
+              onMouseEnter={e=>{ if(!loading&&!googleLoading) e.currentTarget.style.opacity='0.88'; }}
+              onMouseLeave={e=>{ e.currentTarget.style.opacity=(loading||googleLoading)?'0.8':'1'; }}
             >
               {loading ? <><Spinner/>Creating account…</> : <>Create Account <ArrowRight size={15} strokeWidth={2.5}/></>}
             </button>
@@ -259,17 +235,18 @@ export default function SignUp({ onSignUp, onGoSignIn }) {
             <div style={{ flex:1, height:1, background:'#F3F4F6' }} />
           </div>
 
-          <button type="button" style={{
+          <button type="button" disabled={loading || googleLoading} onClick={handleGoogle} style={{
             width:'100%', padding:'10px 16px', border:'1.5px solid #E5E7EB',
-            borderRadius:10, background:'#F9FAFB', cursor:'pointer',
+            borderRadius:10, background:'#F9FAFB', cursor:(loading||googleLoading)?'not-allowed':'pointer',
             display:'flex', alignItems:'center', justifyContent:'center', gap:8,
             fontSize:13.5, fontWeight:600, color:'#374151', fontFamily:FONT,
-            transition:'border-color 0.12s,box-shadow 0.12s,background 0.12s',
+            opacity:(loading||googleLoading)?0.7:1,
+            transition:'border-color 0.12s,box-shadow 0.12s,background 0.12s,opacity 0.12s',
           }}
-            onMouseEnter={e=>{ e.currentTarget.style.borderColor=PURPLE; e.currentTarget.style.background='#fff'; e.currentTarget.style.boxShadow=`0 0 0 3px rgba(124,92,252,0.08)`; }}
+            onMouseEnter={e=>{ if(!loading&&!googleLoading){ e.currentTarget.style.borderColor=PURPLE; e.currentTarget.style.background='#fff'; e.currentTarget.style.boxShadow=`0 0 0 3px rgba(124,92,252,0.08)`; }}}
             onMouseLeave={e=>{ e.currentTarget.style.borderColor='#E5E7EB'; e.currentTarget.style.background='#F9FAFB'; e.currentTarget.style.boxShadow='none'; }}
           >
-            <GoogleIcon /> Continue with Google
+            {googleLoading ? <><Spinner dark />Connecting…</> : <><GoogleIcon /> Continue with Google</>}
           </button>
 
           <p style={{ textAlign:'center', fontSize:11.5, color:'#9CA3AF', marginTop:18, marginBottom:0, fontFamily:FONT }}>
@@ -278,16 +255,17 @@ export default function SignUp({ onSignUp, onGoSignIn }) {
         </div>
       </div>
       <style>{`
-        @keyframes cardIn { from{opacity:0;transform:translateY(20px) scale(0.98)} to{opacity:1;transform:translateY(0) scale(1)} }
-        @keyframes orbA { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-18px) scale(1.04)} }
-        @keyframes tlSpin { to{transform:rotate(360deg)} }
+        @keyframes tlSpin{to{transform:rotate(360deg)}}
+        @keyframes cardIn{from{opacity:0;transform:translateY(18px) scale(0.98)}to{opacity:1;transform:none}}
       `}</style>
     </>
   );
 }
 
-function Spinner() {
-  return <span style={{ width:15,height:15,border:'2px solid rgba(255,255,255,0.3)',borderTopColor:'#fff',borderRadius:'50%',display:'inline-block',flexShrink:0,animation:'tlSpin 0.7s linear infinite',marginRight:4 }} />;
+function Spinner({ dark }) {
+  const c = dark ? 'rgba(100,100,100,0.3)' : 'rgba(255,255,255,0.3)';
+  const tc = dark ? '#555' : '#fff';
+  return <span style={{ width:15,height:15,border:`2px solid ${c}`,borderTopColor:tc,borderRadius:'50%',display:'inline-block',flexShrink:0,animation:'tlSpin 0.7s linear infinite',marginRight:4 }} />;
 }
 
 function GoogleIcon() {

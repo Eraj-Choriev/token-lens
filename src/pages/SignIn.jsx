@@ -1,70 +1,10 @@
 import { useState } from 'react';
 import { Eye, EyeOff, Zap, ArrowRight, AlertCircle, Mail, Lock } from 'lucide-react';
+import AuthBackground from '../components/AuthBackground';
+import { signInWithEmail, signInWithGoogle, firebaseErrorMessage } from '../lib/firebase';
 
 const FONT = "'Inter', ui-sans-serif, system-ui";
 const PURPLE = '#7C5CFC';
-
-/* ── Analytical dashboard background ─────────────────────────── */
-function Background() {
-  return (
-    <div aria-hidden style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-      {/* Very light warm base */}
-      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(160deg,#FAF9FF 0%,#F5F3FF 35%,#F0F4FF 65%,#F5FBFF 100%)' }} />
-
-      {/* Soft orbs */}
-      <div style={{ position:'absolute', top:'-8%', right:'-4%', width:500, height:500, borderRadius:'50%', background:'radial-gradient(circle,rgba(124,92,252,0.10) 0%,transparent 68%)', animation:'orbA 14s ease-in-out infinite' }} />
-      <div style={{ position:'absolute', bottom:'-10%', left:'-6%', width:420, height:420, borderRadius:'50%', background:'radial-gradient(circle,rgba(0,152,255,0.08) 0%,transparent 68%)', animation:'orbA 18s ease-in-out infinite reverse' }} />
-
-      {/* ── Decorative mini bar chart (bottom-right) ── */}
-      <svg style={{ position:'absolute', right:'6%', bottom:'12%', opacity:0.10 }} width="180" height="110" viewBox="0 0 180 110">
-        {[35,58,42,75,50,88,65,78,45,92].map((h,i) => (
-          <rect key={i} x={i*17+4} y={110-h} width="11" height={h} rx="3" fill={PURPLE} />
-        ))}
-        <line x1="0" y1="109" x2="180" y2="109" stroke={PURPLE} strokeWidth="1" strokeDasharray="3,3" />
-      </svg>
-
-      {/* ── Decorative line chart (top-left) ── */}
-      <svg style={{ position:'absolute', left:'4%', top:'8%', opacity:0.08 }} width="220" height="90" viewBox="0 0 220 90">
-        <defs>
-          <linearGradient id="siLG" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={PURPLE} stopOpacity="0.3" />
-            <stop offset="100%" stopColor={PURPLE} stopOpacity="0.02" />
-          </linearGradient>
-        </defs>
-        <path d="M0,70 C30,55 50,40 80,48 C110,56 130,18 180,22 L220,18" fill="none" stroke={PURPLE} strokeWidth="2.5" strokeLinecap="round" />
-        <path d="M0,70 C30,55 50,40 80,48 C110,56 130,18 180,22 L220,18 L220,90 L0,90 Z" fill="url(#siLG)" />
-      </svg>
-
-      {/* ── Floating stat pills ── */}
-      {[
-        { top:'14%', right:'18%', label:'128.4K', sub:'tokens today', color:'#7C5CFC' },
-        { top:'62%', left:'5%',   label:'$0.84',  sub:'today\'s cost',  color:'#00C48C' },
-        { bottom:'20%', right:'4%', label:'98.2%', sub:'efficiency',   color:'#0098FF' },
-      ].map((p,i) => (
-        <div key={i} style={{
-          position:'absolute', ...p, sub:undefined, label:undefined, color:undefined,
-          top: p.top, right: p.right, left: p.left, bottom: p.bottom,
-          background:'rgba(255,255,255,0.72)', backdropFilter:'blur(8px)',
-          border:'1px solid rgba(255,255,255,0.9)',
-          borderRadius:10, padding:'8px 12px', opacity:0.55,
-          animation:`orbA ${11+i*2}s ease-in-out infinite ${i}s`,
-          boxShadow:'0 2px 12px rgba(0,0,0,0.06)',
-        }}>
-          <p style={{ fontSize:15, fontWeight:700, color:p.color, margin:0, fontFamily:FONT, letterSpacing:'-0.02em', fontVariantNumeric:'tabular-nums' }}>{p.label}</p>
-          <p style={{ fontSize:10, color:'#9CA3AF', margin:0, fontFamily:FONT }}>{p.sub}</p>
-        </div>
-      ))}
-
-      {/* Fine dot grid */}
-      <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', opacity:0.025 }}>
-        <defs><pattern id="siGrid" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
-          <circle cx="1.5" cy="1.5" r="1.2" fill="#7C5CFC" />
-        </pattern></defs>
-        <rect width="100%" height="100%" fill="url(#siGrid)" />
-      </svg>
-    </div>
-  );
-}
 
 function Field({ id, label, icon: Icon, type, placeholder, value, onChange, error, right, autoComplete }) {
   const [focused, setFocused] = useState(false);
@@ -106,13 +46,13 @@ export default function SignIn({ onSignIn, onGoSignUp }) {
   const [showPw, setShowPw]     = useState(false);
   const [errors, setErrors]     = useState({});
   const [loading, setLoading]   = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const validate = () => {
     const e = {};
     if (!email)                            e.email    = 'Email address is required';
     else if (!/\S+@\S+\.\S+/.test(email))  e.email    = 'Enter a valid email';
     if (!password)                          e.password = 'Password is required';
-    else if (password.length < 6)           e.password = 'Minimum 6 characters';
     return e;
   };
 
@@ -122,15 +62,37 @@ export default function SignIn({ onSignIn, onGoSignUp }) {
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setErrors({});
     setLoading(true);
-    await new Promise(r => setTimeout(r, 900));
-    setLoading(false);
-    if (remember) localStorage.setItem('tl_auth', JSON.stringify({ email }));
-    onSignIn({ email });
+    try {
+      const credential = await signInWithEmail(email, password);
+      const fbUser = credential.user;
+      if (remember) localStorage.setItem('tl_remember', '1');
+      onSignIn({ email: fbUser.email, name: fbUser.displayName, photoURL: fbUser.photoURL, uid: fbUser.uid });
+    } catch (err) {
+      setErrors({ form: firebaseErrorMessage(err.code) });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setGoogleLoading(true);
+    setErrors({});
+    try {
+      const credential = await signInWithGoogle();
+      const fbUser = credential.user;
+      onSignIn({ email: fbUser.email, name: fbUser.displayName, photoURL: fbUser.photoURL, uid: fbUser.uid });
+    } catch (err) {
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setErrors({ form: firebaseErrorMessage(err.code) });
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   return (
     <>
-      <Background />
+      <AuthBackground />
       <div style={{ position:'relative', zIndex:1, width:'100%', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px 16px', fontFamily:FONT }}>
         <div style={{
           width:'100%', maxWidth:400,
@@ -160,12 +122,19 @@ export default function SignIn({ onSignIn, onGoSignUp }) {
             </p>
           </div>
 
+          {errors.form && (
+            <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 14px', background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:10, marginBottom:16 }}>
+              <AlertCircle size={14} color="#DC2626" style={{ flexShrink:0 }} />
+              <span style={{ fontSize:12.5, color:'#DC2626', fontFamily:FONT }}>{errors.form}</span>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} noValidate>
             <Field id="si-email" label="Email address" icon={Mail} type="email" placeholder="you@example.com"
-              value={email} onChange={e => { setEmail(e.target.value); setErrors(r=>({...r,email:''})); }}
+              value={email} onChange={e => { setEmail(e.target.value); setErrors(r=>({...r,email:'',form:''})); }}
               error={errors.email} autoComplete="email" />
             <Field id="si-password" label="Password" icon={Lock} type={showPw?'text':'password'} placeholder="Your password"
-              value={password} onChange={e => { setPassword(e.target.value); setErrors(r=>({...r,password:''})); }}
+              value={password} onChange={e => { setPassword(e.target.value); setErrors(r=>({...r,password:'',form:''})); }}
               error={errors.password} autoComplete="current-password"
               right={
                 <button type="button" onClick={()=>setShowPw(s=>!s)} style={{ background:'none',border:'none',cursor:'pointer',padding:'8px 10px',color:'#9CA3AF',display:'flex',alignItems:'center' }}>
@@ -185,18 +154,18 @@ export default function SignIn({ onSignIn, onGoSignUp }) {
               </button>
             </div>
 
-            <button type="submit" disabled={loading} style={{
+            <button type="submit" disabled={loading || googleLoading} style={{
               width:'100%', padding:'12px 20px',
               background:`linear-gradient(135deg,${PURPLE},#5B21B6)`,
               color:'#fff', border:'none', borderRadius:10,
               fontSize:14, fontWeight:600, letterSpacing:'-0.01em',
-              cursor:loading?'not-allowed':'pointer',
+              cursor:(loading||googleLoading)?'not-allowed':'pointer',
               display:'flex', alignItems:'center', justifyContent:'center', gap:7,
               boxShadow:loading?'none':`0 4px 16px rgba(124,92,252,0.38)`,
-              opacity:loading?0.8:1, transition:'opacity 0.15s', fontFamily:FONT,
+              opacity:(loading||googleLoading)?0.8:1, transition:'opacity 0.15s', fontFamily:FONT,
             }}
-              onMouseEnter={e=>{ if(!loading) e.currentTarget.style.opacity='0.88'; }}
-              onMouseLeave={e=>{ e.currentTarget.style.opacity=loading?'0.8':'1'; }}
+              onMouseEnter={e=>{ if(!loading&&!googleLoading) e.currentTarget.style.opacity='0.88'; }}
+              onMouseLeave={e=>{ e.currentTarget.style.opacity=(loading||googleLoading)?'0.8':'1'; }}
             >
               {loading ? <><Spinner/>Signing in…</> : <>Sign In <ArrowRight size={15} strokeWidth={2.5}/></>}
             </button>
@@ -208,18 +177,18 @@ export default function SignIn({ onSignIn, onGoSignUp }) {
             <div style={{ flex:1, height:1, background:'#F3F4F6' }} />
           </div>
 
-          {/* Google only */}
-          <button type="button" style={{
+          <button type="button" disabled={loading || googleLoading} onClick={handleGoogle} style={{
             width:'100%', padding:'10px 16px', border:`1.5px solid #E5E7EB`,
-            borderRadius:10, background:'#F9FAFB', cursor:'pointer',
+            borderRadius:10, background:'#F9FAFB', cursor:(loading||googleLoading)?'not-allowed':'pointer',
             display:'flex', alignItems:'center', justifyContent:'center', gap:8,
             fontSize:13.5, fontWeight:600, color:'#374151', fontFamily:FONT,
-            transition:'border-color 0.12s,box-shadow 0.12s,background 0.12s',
+            opacity:(loading||googleLoading)?0.7:1,
+            transition:'border-color 0.12s,box-shadow 0.12s,background 0.12s,opacity 0.12s',
           }}
-            onMouseEnter={e=>{ e.currentTarget.style.borderColor=PURPLE; e.currentTarget.style.background='#fff'; e.currentTarget.style.boxShadow=`0 0 0 3px rgba(124,92,252,0.08)`; }}
+            onMouseEnter={e=>{ if(!loading&&!googleLoading){ e.currentTarget.style.borderColor=PURPLE; e.currentTarget.style.background='#fff'; e.currentTarget.style.boxShadow=`0 0 0 3px rgba(124,92,252,0.08)`; }}}
             onMouseLeave={e=>{ e.currentTarget.style.borderColor='#E5E7EB'; e.currentTarget.style.background='#F9FAFB'; e.currentTarget.style.boxShadow='none'; }}
           >
-            <GoogleIcon /> Continue with Google
+            {googleLoading ? <><Spinner dark />Connecting…</> : <><GoogleIcon /> Continue with Google</>}
           </button>
 
           <p style={{ textAlign:'center', fontSize:11.5, color:'#9CA3AF', marginTop:20, marginBottom:0, fontFamily:FONT }}>
@@ -228,16 +197,17 @@ export default function SignIn({ onSignIn, onGoSignUp }) {
         </div>
       </div>
       <style>{`
-        @keyframes cardIn { from{opacity:0;transform:translateY(20px) scale(0.98)} to{opacity:1;transform:translateY(0) scale(1)} }
-        @keyframes orbA { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-20px) scale(1.04)} }
-        @keyframes tlSpin { to{transform:rotate(360deg)} }
+        @keyframes tlSpin{to{transform:rotate(360deg)}}
+        @keyframes cardIn{from{opacity:0;transform:translateY(18px) scale(0.98)}to{opacity:1;transform:none}}
       `}</style>
     </>
   );
 }
 
-function Spinner() {
-  return <span style={{ width:15,height:15,border:'2px solid rgba(255,255,255,0.3)',borderTopColor:'#fff',borderRadius:'50%',display:'inline-block',flexShrink:0,animation:'tlSpin 0.7s linear infinite',marginRight:4 }} />;
+function Spinner({ dark }) {
+  const c = dark ? 'rgba(100,100,100,0.3)' : 'rgba(255,255,255,0.3)';
+  const tc = dark ? '#555' : '#fff';
+  return <span style={{ width:15,height:15,border:`2px solid ${c}`,borderTopColor:tc,borderRadius:'50%',display:'inline-block',flexShrink:0,animation:'tlSpin 0.7s linear infinite',marginRight:4 }} />;
 }
 
 function GoogleIcon() {
