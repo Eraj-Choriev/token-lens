@@ -8,6 +8,7 @@ import {
   updateProfile,
   signOut,
   onAuthStateChanged,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -39,6 +40,8 @@ export const signUpWithEmail = async (email, password, name) => {
 };
 
 export const logOut = () => signOut(auth);
+
+export const resetPassword = (email) => sendPasswordResetEmail(auth, email);
 
 export function firebaseErrorMessage(code) {
   switch (code) {

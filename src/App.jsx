@@ -15,6 +15,7 @@ import { useNotifications }  from './hooks/useNotifications';
 import { MODEL_META }        from './data/mockData';
 import SignIn                from './pages/SignIn';
 import SignUp                from './pages/SignUp';
+import ForgotPassword        from './pages/ForgotPassword';
 import Profile               from './pages/Profile';
 import Settings              from './pages/Settings';
 import { t }                 from './lib/i18n';
@@ -116,10 +117,9 @@ export default function App() {
   if (!user) {
     return (
       <>
-        {authPage === 'signin'
-          ? <SignIn onSignIn={handleSignIn} onGoSignUp={() => setAuthPage('signup')} lang={lang} />
-          : <SignUp onSignUp={handleSignUp} onGoSignIn={() => setAuthPage('signin')} lang={lang} />
-        }
+        {authPage === 'signin'   && <SignIn onSignIn={handleSignIn} onGoSignUp={() => setAuthPage('signup')} onGoForgot={() => setAuthPage('forgot')} lang={lang} />}
+        {authPage === 'signup'   && <SignUp onSignUp={handleSignUp} onGoSignIn={() => setAuthPage('signin')} lang={lang} />}
+        {authPage === 'forgot'   && <ForgotPassword onGoSignIn={() => setAuthPage('signin')} />}
       </>
     );
   }

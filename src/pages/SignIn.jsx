@@ -39,7 +39,7 @@ function Field({ id, label, icon: Icon, type, placeholder, value, onChange, erro
   );
 }
 
-export default function SignIn({ onSignIn, onGoSignUp }) {
+export default function SignIn({ onSignIn, onGoSignUp, onGoForgot }) {
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(false);
@@ -149,7 +149,7 @@ export default function SignIn({ onSignIn, onGoSignUp }) {
                   style={{ width:14, height:14, accentColor:PURPLE, cursor:'pointer' }} />
                 <span style={{ fontSize:12.5, color:'#6B7280', fontFamily:FONT }}>Remember me</span>
               </label>
-              <button type="button" style={{ fontSize:12.5, color:PURPLE, fontWeight:600, background:'none', border:'none', cursor:'pointer', padding:0, fontFamily:FONT }}>
+              <button type="button" onClick={onGoForgot} style={{ fontSize:12.5, color:PURPLE, fontWeight:600, background:'none', border:'none', cursor:'pointer', padding:0, fontFamily:FONT }}>
                 Forgot password?
               </button>
             </div>
